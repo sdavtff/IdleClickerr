@@ -218,7 +218,7 @@ const BUILDINGS := [
 		"cost": 250000.0, "happy": 5, "unique": true, "income_bonus": 0.05,
 		"desc": "Cartão-postal da cidade: atrai turistas. +5% renda e +5% felicidade (único)."},
 	{"id": "estacao_metro", "name": "Estação de metrô", "cat": "pub", "region": 3, "w": 200,
-		"cost": 2500000.0, "upkeep": 900.0, "happy": 3, "income_bonus": 0.03, "research": "t2",
+		"cost": 2500000.0, "upkeep": 900.0, "happy": 3, "transit": 20000, "income_bonus": 0.03, "research": "t2",
 		"desc": "Transporte rápido: +3% renda da cidade e mais felicidade. Requer pesquisa."},
 	{"id": "porto", "name": "Porto", "cat": "esp", "region": 3, "w": 236,
 		"cost": 8000000.0, "income": 60000.0, "jobs": 900, "pollution": 2, "research": "t3",
@@ -227,11 +227,27 @@ const BUILDINGS := [
 		"cost": 60000000.0, "income": 400000.0, "jobs": 1500, "unique": true, "income_bonus": 0.08,
 		"desc": "Sede de bancos internacionais. +8% renda da cidade (único)."},
 	{"id": "aeroporto", "name": "Aeroporto", "cat": "esp", "region": 5, "w": 238,
-		"cost": 900000000.0, "income": 4500000.0, "jobs": 6000, "unique": true, "income_bonus": 0.1, "research": "t4",
+		"cost": 900000000.0, "income": 4500000.0, "jobs": 6000, "unique": true, "income_bonus": 0.1, "research": "t4", "transit": 60000,
 		"desc": "Voos para o mundo todo. +10% renda da cidade (único). Requer pesquisa."},
 	{"id": "torre_iconica", "name": "Torre Icônica", "cat": "esp", "region": 6, "w": 220,
 		"cost": 20000000000.0, "income": 60000000.0, "jobs": 15000, "happy": 4, "unique": true,
 		"desc": "O arranha-céu mais alto do país. Símbolo da megacidade (único)."},
+	# ---------------- Novos na 3.0 ----------------
+	{"id": "posto_saude", "name": "Posto de saúde", "cat": "pub", "region": 0, "w": 160,
+		"cost": 1500.0, "upkeep": 1.0, "service": "saude", "cov": 60,
+		"desc": "Atendimento básico de saúde para a vila."},
+	{"id": "terminal_onibus", "name": "Terminal de ônibus", "cat": "pub", "region": 1, "w": 210,
+		"cost": 8000.0, "upkeep": 4.0, "transit": 1500, "happy": 1,
+		"desc": "Linhas de ônibus que reduzem o trânsito da cidade."},
+	{"id": "reciclagem", "name": "Usina de reciclagem", "cat": "biz", "region": 2, "w": 210,
+		"cost": 120000.0, "income": 300.0, "jobs": 40, "pollution": -6,
+		"desc": "Transforma lixo em renda e limpa o ar da cidade."},
+	{"id": "centro_pesquisa", "name": "Centro de pesquisa", "cat": "pub", "region": 4, "w": 200,
+		"cost": 30000000.0, "upkeep": 6000.0, "happy": 1, "rp": 1.5,
+		"desc": "Laboratórios de ponta: gera muitos pontos de pesquisa."},
+	{"id": "torre_comercial", "name": "Torre comercial", "cat": "com", "region": 5, "w": 190,
+		"cost": 300000000.0, "income": 1500000.0, "jobs": 4000,
+		"desc": "Andares de lojas, restaurantes e um mirante no topo."},
 	{"id": "resort", "name": "Resort", "cat": "com", "region": 7, "w": 220,
 		"cost": 50000000000.0, "income": 160000000.0, "jobs": 30000,
 		"desc": "Hotel cinco estrelas pé na areia."},
@@ -336,7 +352,7 @@ const RESEARCH := [
 	{"id": "c2", "branch": "construcao", "name": "Pré-moldados", "cost": 80, "req": ["c1"], "fx": {"build_cost": -0.1}, "desc": "Construções 10% mais baratas"},
 	{"id": "c3", "branch": "construcao", "name": "Guindastes modernos", "cost": 350, "req": ["c2"], "fx": {"build_time": -0.3, "upgrade_cost": -0.05}, "desc": "Obras 30% mais rápidas e melhorias 5% mais baratas"},
 	{"id": "c4", "branch": "construcao", "name": "Arquitetura vertical", "cost": 1400, "req": ["c3"], "fx": {"res_cap": 0.15}, "desc": "+15% de moradores em todas as residências"},
-	{"id": "t1", "branch": "transporte", "name": "Linhas de ônibus", "cost": 30, "req": [], "fx": {"growth": 0.15, "happy": 2.0}, "desc": "+15% crescimento populacional e +2% felicidade"},
+	{"id": "t1", "branch": "transporte", "name": "Linhas de ônibus", "cost": 30, "req": [], "fx": {"growth": 0.15, "happy": 2.0, "transit": 0.25}, "desc": "+15% crescimento, +2% felicidade e +25% capacidade de trânsito"},
 	{"id": "t2", "branch": "transporte", "name": "Metrô", "cost": 160, "req": ["t1"], "fx": {}, "desc": "Libera a Estação de metrô"},
 	{"id": "t3", "branch": "transporte", "name": "Logística marítima", "cost": 650, "req": ["t2"], "fx": {"biz": 0.1}, "desc": "Libera o Porto e +10% renda empresarial"},
 	{"id": "t4", "branch": "transporte", "name": "Aviação civil", "cost": 2600, "req": ["t3"], "fx": {}, "desc": "Libera o Aeroporto"},
@@ -395,6 +411,34 @@ const DAILY_REWARD_MIN := 15.0
 const DAILY_REWARD_RP := 15
 const WEEKLY_REWARD_MIN := 60.0
 const WEEKLY_REWARD_RP := 80
+
+# --- Bônus temporários -----------------------------------------------------------
+## fx aplicado enquanto ativo (mesmas chaves dos modificadores).
+const BOOSTS := {
+	"renda": {"name": "Renda em dobro", "fx": {"all_income": 1.0}, "icon": "coin", "desc": "Toda a renda da cidade x2"},
+	"obras": {"name": "Obras turbo", "fx": {"build_time": -0.5}, "icon": "build", "desc": "Obras 2x mais rápidas"},
+	"pesquisa": {"name": "Ciência acelerada", "fx": {"rp": 1.0}, "icon": "research", "desc": "Pontos de pesquisa x2"},
+	"populacao": {"name": "Onda de migração", "fx": {"growth": 1.0}, "icon": "people", "desc": "Crescimento populacional x2"},
+}
+const FREE_BOOST_SECONDS := 600.0
+const FREE_BOOST_COOLDOWN := 10800.0
+const BOOST_MAX_SECONDS := 7200.0
+const GOLDEN_COIN_CHANCE := 0.07
+## Recompensa diária (sequência de 7 dias). kind: money (minutos de renda) | rp | boost | star
+const LOGIN_REWARDS := [
+	[{"kind": "money", "v": 5}],
+	[{"kind": "rp", "v": 20}],
+	[{"kind": "boost", "id": "renda", "v": 600}],
+	[{"kind": "money", "v": 15}],
+	[{"kind": "boost", "id": "obras", "v": 900}],
+	[{"kind": "rp", "v": 60}, {"kind": "boost", "id": "pesquisa", "v": 900}],
+	[{"kind": "star", "v": 1}, {"kind": "boost", "id": "renda", "v": 1800}],
+]
+
+# --- Índices urbanos --------------------------------------------------------------
+## Capacidade viária base por região desbloqueada (moradores que se deslocam sem trânsito).
+const ROAD_CAPACITY_BASE := 300.0
+const ROAD_CAPACITY_PER_REGION := 1000.0
 
 # --- Finanças --------------------------------------------------------------------
 const TAX_LEVELS := [
@@ -522,3 +566,7 @@ static func base_build_time(def: Dictionary) -> float:
 	if def["cat"] == "esp":
 		t *= 2.5
 	return t
+
+
+static func boost_def(id: String) -> Dictionary:
+	return BOOSTS.get(id, {})

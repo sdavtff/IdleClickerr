@@ -64,12 +64,14 @@ func recompute() -> void:
 	var housing := 0.0 if cap_sum <= 0.0 else HOUSING_MAX * comfort_sum / cap_sum
 	total += housing
 	factors.append({"name": "Moradias", "value": housing, "max": HOUSING_MAX})
-	if pollution > 0.0:
-		pollution *= Modifiers.mult("pollution", 0.0)
-	var poll_penalty := clampf(pollution * 1.5, 0.0, 20.0)
-	if poll_penalty > 0.0:
-		total -= poll_penalty
-		factors.append({"name": "Poluição", "value": -poll_penalty, "max": 0.0})
+	var poll_penalty := CityIndexSystem.pollution_penalty()
+	if poll_penalty < -0.05:
+		total += poll_penalty
+		factors.append({"name": "Poluição", "value": poll_penalty, "max": 0.0})
+	var traffic_pen := CityIndexSystem.traffic_penalty()
+	if traffic_pen < -0.05:
+		total += traffic_pen
+		factors.append({"name": "Trânsito", "value": traffic_pen, "max": 0.0})
 	var tax_h := EconomySystem.tax_happiness()
 	if tax_h != 0.0:
 		total += tax_h

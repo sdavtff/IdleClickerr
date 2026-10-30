@@ -16,6 +16,7 @@ var stats_panel: StatsPanel
 var finance_panel: FinancePanel
 var research_panel: ResearchPanel
 var events_panel: EventsPanel
+var boost_panel: BoostPanel
 var confirm: ConfirmDialog
 var offline: OfflinePopup
 var _refresh_acc := 0.0
@@ -34,6 +35,7 @@ func _ready() -> void:
 	layer.add_child(ui_root)
 	hud = HUD.new()
 	hud.day_night = city.day_night
+	hud.city = city
 	ui_root.add_child(hud)
 
 	build_panel = _panel(BuildPanel.new())
@@ -47,6 +49,7 @@ func _ready() -> void:
 	finance_panel = _panel(FinancePanel.new())
 	research_panel = _panel(ResearchPanel.new())
 	events_panel = _panel(EventsPanel.new())
+	boost_panel = _panel(BoostPanel.new())
 	offline = _panel(OfflinePopup.new())
 	confirm = _panel(ConfirmDialog.new())
 
@@ -59,6 +62,9 @@ func _ready() -> void:
 	hud.open_finance.connect(func(): finance_panel.open_panel())
 	hud.open_research.connect(func(): research_panel.open_panel())
 	hud.open_events.connect(func(): events_panel.open_panel())
+	hud.open_boosts.connect(func(): boost_panel.open_panel())
+	hud.jump_to.connect(func(x): city.jump_x(x))
+	settings_panel.restore_requested.connect(_ask_restore)
 	hud.open_stats.connect(func(tab):
 		stats_panel.current_tab = tab
 		stats_panel.open_panel()
@@ -92,6 +98,30 @@ func _ready() -> void:
 	GameManager.start_running()
 	if not IdleSystem.pending.is_empty() and not offline.visible:
 		offline.show_report(IdleSystem.pending)
+	# Recompensa diária: abre automaticamente uma vez por dia (depois do resumo offline).
+	if BoostSystem.login_available():
+		if offline.visible:
+			offline.closed.connect(_show_login, CONNECT_ONE_SHOT)
+		else:
+			_show_login.call_deferred()
+
+
+func _show_login() -> void:
+	if BoostSystem.login_available():
+		boost_panel.current_tab = 1
+		boost_panel.open_panel()
+
+
+func _ask_restore(slot: int) -> void:
+	var do_it := func():
+		GameManager.stop_running()
+		if SaveSystem.restore_snapshot(slot) and GameManager.continue_game():
+			UI.modal_stack.clear()
+			get_tree().change_scene_to_file("res://scenes/Game.tscn")
+		else:
+			GameManager.running = true
+			GameManager.toast.emit("Não foi possível restaurar esta cópia.", "warning")
+	confirm.ask("Restaurar cópia de segurança?", "A cidade atual será substituída por esta cópia. O save atual ficará guardado como backup.", "Restaurar", do_it, UI.C_ORANGE)
 
 
 func _panel(p):

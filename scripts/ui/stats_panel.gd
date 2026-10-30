@@ -15,7 +15,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	set_tabs(["Economia", "População", "Felicidade"])
+	set_tabs(["Economia", "População", "Felicidade", "Qualidade de vida"])
 
 
 func rebuild() -> void:
@@ -68,7 +68,45 @@ func rebuild() -> void:
 				h.add_child(val)
 				_bars.append({"name": f["name"], "bar": bar, "label": val})
 			list.content.add_child(_hint("Construa hospitais, escolas, delegacias e áreas de lazer para atender toda a população. Fábricas poluem; usinas solares limpam o ar."))
+		3:
+			for k in ["qol", "traffic", "transit", "pollution", "productivity"]:
+				_add_line(k)
+			for key in [["pop", "População", UI.C_BLUE], ["happy", "Felicidade (%)", UI.C_GREEN], ["traffic", "Trânsito (%)", UI.C_ORANGE]]:
+				var chart := HistoryChart.new()
+				chart.key = key[0]
+				chart.title = key[1]
+				chart.color = key[2]
+				chart.custom_minimum_size = Vector2(0, 150)
+				list.content.add_child(chart)
+			list.content.add_child(_hint("Trânsito: construa terminais de ônibus, metrô e aeroporto, ou pesquise Linhas de ônibus. Poluição: usinas solares, reciclagem e pesquisas de energia. Escolas aumentam a produtividade."))
 	refresh()
+
+
+class HistoryChart extends Control:
+	var key := "pop"
+	var title := ""
+	var color := Color.WHITE
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		draw_rect(r, Color("f4f7fb"))
+		draw_rect(r, Color("d0d7e2"), false, 2.0)
+		var hist: Array = EconomySystem.history.filter(func(h): return h.has(key))
+		draw_string(UI.font_semi, Vector2(10, 22), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, UI.C_TEXT)
+		if hist.size() < 2:
+			draw_string(UI.font_semi, Vector2(0, size.y * 0.6), "O gráfico aparece após alguns minutos de jogo.", HORIZONTAL_ALIGNMENT_CENTER, size.x, 16, UI.C_MUTED)
+			return
+		var max_v := 1.0
+		for h in hist:
+			max_v = maxf(max_v, float(h[key]))
+		var pts := PackedVector2Array()
+		for i in hist.size():
+			pts.append(Vector2(10.0 + (size.x - 20.0) * i / float(hist.size() - 1), size.y - 12.0 - (size.y - 44.0) * float(hist[i][key]) / max_v))
+		draw_polyline(pts, color, 3.0, true)
+		draw_string(UI.font_semi, Vector2(size.x - 230, 22), "Atual: %s" % Fmt.num(float(hist[-1][key])), HORIZONTAL_ALIGNMENT_RIGHT, 220, 16, UI.C_MUTED)
 
 
 func _hint(t: String) -> Control:
@@ -99,6 +137,12 @@ func refresh() -> void:
 	if not visible:
 		return
 	var e := EconomySystem
+	var ci := CityIndexSystem
+	_put("qol", "Qualidade de vida (nota %s)" % ci.grade(), Fmt.percent(ci.quality_of_life))
+	_put("traffic", "Trânsito: " + ci.traffic_label(), Fmt.percent(ci.traffic))
+	_put("transit", "Deslocamentos / capacidade de transporte", "%s / %s" % [Fmt.pop(ci.commuters), Fmt.pop(ci.transit_capacity)])
+	_put("pollution", "Poluição", Fmt.percent(ci.pollution))
+	_put("productivity", "Produtividade (educação e trânsito)", "x" + Fmt.num(ci.productivity))
 	_put("money", "Dinheiro atual", Fmt.money(e.money))
 	_put("income", "Renda bruta", Fmt.money_ps(e.income_ps))
 	_put("business", "    Comércios, empresas e lazer", Fmt.money_ps(e.business_income))

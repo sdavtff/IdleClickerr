@@ -194,7 +194,7 @@ func recompute() -> void:
 	var occupancy := 0.0 if cap <= 0.0 else clampf(pop / cap, 0.0, 1.0)
 	happiness_mult = 0.7 + 0.6 * HappinessSystem.value / 100.0
 	global_mult = compute_global_mult()
-	var k := work_efficiency * happiness_mult * global_mult
+	var k := work_efficiency * happiness_mult * global_mult * CityIndexSystem.productivity
 	income_by_cat = {}
 	business_income = 0.0
 	for cat in gross_by_cat.keys():
@@ -239,7 +239,8 @@ func tick(dt: float) -> void:
 
 
 func record_history() -> void:
-	history.append({"t": econ_time, "money": money, "income": income_ps, "expense": expense_ps})
+	history.append({"t": econ_time, "money": money, "income": income_ps, "expense": expense_ps,
+		"pop": PopulationSystem.population, "happy": HappinessSystem.value, "traffic": CityIndexSystem.traffic, "qol": CityIndexSystem.quality_of_life})
 	while history.size() > HISTORY_MAX:
 		history.pop_front()
 

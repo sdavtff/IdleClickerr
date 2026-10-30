@@ -49,6 +49,8 @@ var _lanes: Array = [[], []]
 var traffic: TrafficLights
 var _confetti_acc := 0.0
 var _lightning_acc := 4.0
+var _shadow_bucket := 999
+var _traffic_acc := 0.0
 var _last_night := -1.0
 
 
@@ -224,6 +226,14 @@ func focus_x(world_x: float) -> void:
 	velocity = 0.0
 
 
+## Pula direto para um ponto (usado pelo minimapa).
+func jump_x(world_x: float) -> void:
+	cam_target = -1.0
+	velocity = 0.0
+	cam_x = world_x - view_size().x * 0.5
+	_apply_camera()
+
+
 func focus_lot(lot: int) -> void:
 	focus_x(GameData.lot_center_x(lot))
 
@@ -294,6 +304,12 @@ func _tap(screen_pos: Vector2) -> void:
 		EconomySystem.add_money(amount, true)
 		MissionSystem.on_bubble()
 		effects.float_text(b["p"], "+" + Fmt.money(amount), Color("ffe14d"), 28)
+		if b.get("golden", false):
+			var ids := GameData.BOOSTS.keys()
+			var id: String = ids[_rng.randi() % ids.size()]
+			BoostSystem.add(id, 180.0)
+			GameManager.toast.emit("Moeda dourada! Bônus: %s por 3 min" % GameData.boost_def(id)["name"], "event")
+			effects.coin_burst(b["p"], 18)
 		effects.sparkle(b["p"] + Vector2(0, 20), 40, 40)
 		AudioManager.play("coin")
 		bubble_collected.emit(amount)
@@ -339,11 +355,34 @@ func _process(delta: float) -> void:
 	_update_bubbles(delta)
 
 
+func _update_shadows() -> void:
+	# O sol cruza o céu da esquerda para a direita: sombras longas de manhã e
+	# à tarde, curtas ao meio-dia e ausentes à noite.
+	var sun_k := clampf(fposmod(day_night.t - 0.25, 1.0) / 0.5, 0.0, 1.0)
+	var dir := lerpf(1.0, -1.0, sun_k)
+	var strength := clampf(day_night.daylight() * (1.0 - _rain_level * 0.7), 0.0, 1.0)
+	var bucket := int(round(dir * 5.0)) * 10 + int(round(strength * 4.0))
+	if bucket == _shadow_bucket:
+		return
+	_shadow_bucket = bucket
+	BuildingNode.shadow_dir = round(dir * 5.0) / 5.0
+	BuildingNode.shadow_strength = round(strength * 4.0) / 4.0
+	for n in building_nodes.values():
+		n.queue_redraw()
+
+
 func _update_tint() -> void:
 	_tint_acc += get_process_delta_time()
 	if _tint_acc < 0.1:
 		return
 	_tint_acc = 0.0
+	_update_shadows()
+	# neblina nas primeiras horas da manhã
+	var fog_k := 0.0
+	if SettingsManager.weather and SettingsManager.quality > 0:
+		fog_k = clampf(1.0 - absf(day_night.t - 0.27) / 0.05, 0.0, 1.0) * 0.8
+	rain.fog = fog_k
+	AudioManager.set_daylight(day_night.daylight())
 	var tint := day_night.world_tint()
 	var dark := _rain_level * 0.18
 	tint = tint.darkened(dark)
@@ -423,8 +462,36 @@ func _update_peds(delta: float) -> void:
 						p.cooldown = 2.0
 
 
+## Mais trânsito = mais carros na rua (até +2 por faixa).
+func _update_traffic_density(delta: float) -> void:
+	_traffic_acc += delta
+	if _traffic_acc < 3.0:
+		return
+	_traffic_acc = 0.0
+	var wanted := SettingsManager.cars_per_lane() + int(CityIndexSystem.traffic / 40.0)
+	var vw := view_size().x
+	for lane in 2:
+		var arr: Array = _lanes[lane]
+		var d := -1.0 if lane == 0 else 1.0
+		if arr.size() < wanted:
+			var c := Car.new()
+			(cars_root_far if lane == 0 else cars_root_near).add_child(c)
+			c.randomize_car(_rng, lane, d)
+			c.position = Vector2((cam_x - 500.0) if d > 0 else (cam_x + vw + 500.0), _lane_y(lane))
+			_cars.append(c)
+			arr.append(c)
+		elif arr.size() > wanted:
+			for c in arr:
+				if not is_x_visible(c.position.x, 200.0):
+					arr.erase(c)
+					_cars.erase(c)
+					c.queue_free()
+					break
+
+
 func _update_cars(delta: float) -> void:
 	var vw := view_size().x
+	_update_traffic_density(delta)
 	traffic.advance(delta)
 	for lane in 2:
 		var lane_cars: Array = _lanes[lane]
@@ -454,6 +521,7 @@ func _update_cars(delta: float) -> void:
 				var dist := (stop_x - front) * d
 				if dist >= 0.0 and dist < 90.0:
 					want = 0.0 if dist < 70.0 else want * 0.4
+			want *= 1.0 - 0.5 * CityIndexSystem.traffic / 100.0
 			c.speed = move_toward(c.speed, want, 220.0 * delta)
 			c.advance(delta)
 			var out_ahead := (c.position.x > cam_x + vw + 400.0) if d > 0 else (c.position.x < cam_x - 400.0)
@@ -481,7 +549,8 @@ func _update_bubbles(delta: float) -> void:
 			if not candidates.is_empty():
 				var n: BuildingNode = candidates[_rng.randi() % candidates.size()]
 				var value := maxf(25.0, EconomySystem.income_ps * 15.0)
-				effects.add_bubble(n.position + Vector2(_rng.randf_range(-30, 30), -n.h - 50.0), value)
+				var golden := _rng.randf() < GameData.GOLDEN_COIN_CHANCE
+				effects.add_bubble(n.position + Vector2(_rng.randf_range(-30, 30), -n.h - 50.0), value * (3.0 if golden else 1.0), golden)
 	if not SettingsManager.floating_text:
 		return
 	_floater_timer -= delta

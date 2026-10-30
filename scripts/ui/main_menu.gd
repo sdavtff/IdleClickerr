@@ -92,7 +92,7 @@ func _build_ui() -> void:
 	c.custom_minimum_size = Vector2(0, 60)
 	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(c)
-	var nw := UI.button("Novidades 2.0", Color("e8590c"), func(): _news.open_panel(), 20, false, "event")
+	var nw := UI.button("Novidades 3.0", Color("e8590c"), func(): _news.open_panel(), 20, false, "event")
 	nw.custom_minimum_size = Vector2(0, 60)
 	nw.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(nw)
@@ -114,7 +114,7 @@ func _build_ui() -> void:
 	_credits = _make_credits()
 	add_child(_credits)
 	_news = ModalPanel.new()
-	_news.title = "Novidades da versão 2.0"
+	_news.title = "Novidades da versão 3.0"
 	_news.icon_name = "event"
 	_news.desired_size = Vector2(980, 640)
 	_news.ready.connect(_fill_news.bind(_news))
@@ -150,7 +150,13 @@ func _make_credits() -> ModalPanel:
 
 func _fill_news(p: ModalPanel) -> void:
 	for line in [
-		["Construções", "11 novas, incluindo a categoria Especiais: Aeroporto, Porto, Monumento, Torre Icônica e Complexo financeiro. Agora toda obra leva um tempo (pode ser acelerada)."],
+		["3.0: Índices urbanos", "Trânsito, poluição, produtividade e qualidade de vida (nota A a E) mudam a felicidade, o crescimento e a renda. Gráficos de população, felicidade e trânsito."],
+		["3.0: Bônus e recompensa diária", "Renda em dobro, obras turbo, ciência acelerada e migração. Incentivo grátis a cada 3 horas, moedas douradas e sequência de 7 dias de recompensas."],
+		["3.0: Novas construções", "Posto de saúde, Terminal de ônibus, Usina de reciclagem, Centro de pesquisa e Torre comercial (53 no total)."],
+		["3.0: Cidade mais viva", "Sombras que acompanham o sol, neblina ao amanhecer, mais carros quando o trânsito aperta e minimapa para navegar."],
+		["3.0: Som ambiente", "Pássaros e trânsito de dia, grilos à noite e música noturna, com volume próprio."],
+		["3.0: Recuperação de progresso", "3 cópias de segurança automáticas que podem ser restauradas nas Configurações."],
+		["2.0: Construções", "11 novas, incluindo a categoria Especiais: Aeroporto, Porto, Monumento, Torre Icônica e Complexo financeiro. Agora toda obra leva um tempo (pode ser acelerada)."],
 		["Nova região", "Orla Dourada: resorts, marina e farol à beira-mar."],
 		["Finanças", "Impostos ajustáveis, receitas por categoria, banco com investimentos e empréstimos, relatório e histórico."],
 		["Pesquisas", "Árvore com 20 tecnologias em 6 ramos que liberam construções e dão bônus."],

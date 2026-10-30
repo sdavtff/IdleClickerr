@@ -54,8 +54,8 @@ func confetti(pos: Vector2, count := 6) -> void:
 			"life": 0.0, "max": randf_range(2.5, 3.5), "g": 8.0, "confetti": true})
 
 
-func add_bubble(pos: Vector2, value: float) -> void:
-	bubbles.append({"p": pos, "v": value, "life": 0.0, "max": 14.0, "seed": randf() * TAU})
+func add_bubble(pos: Vector2, value: float, golden := false) -> void:
+	bubbles.append({"p": pos, "v": value, "life": 0.0, "max": 14.0, "seed": randf() * TAU, "golden": golden})
 
 
 func bubble_at(world: Vector2) -> int:
@@ -129,6 +129,11 @@ func _draw() -> void:
 		var p: Vector2 = b["p"] + Vector2(0, _bob(b))
 		var fade: float = clampf((b["max"] - b["life"]) / 1.0, 0.0, 1.0) * clampf(b["life"] / 0.3, 0.0, 1.0)
 		var pulse := 1.0 + sin(_time * 5.0) * 0.06
+		if b.get("golden", false):
+			draw_circle(p, 46 * pulse, Color(1, 0.85, 0.2, 0.35 * fade))
+			for k in 8:
+				var a := _time * 1.5 + k * TAU / 8.0
+				draw_line(p + Vector2(cos(a), sin(a)) * 32, p + Vector2(cos(a), sin(a)) * 44, Color(1, 0.95, 0.5, 0.8 * fade), 3.0)
 		draw_circle(p, 34 * pulse, Color(1, 1, 1, 0.35 * fade))
 		draw_circle(p, 26, Color(BuildingArt.OUT, fade))
 		draw_circle(p, 23, Color(1.0, 0.8, 0.2, fade))

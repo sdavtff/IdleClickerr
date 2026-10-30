@@ -13,6 +13,10 @@ var lights: BuildingLights
 var _extra: Spinner
 var _scaffold: Scaffold
 var constructing := false
+## Direção da sombra (-1 = para a esquerda ao entardecer, +1 = para a direita de manhã)
+## e intensidade (0 à noite). Atualizadas pelo CityView em passos discretos.
+static var shadow_dir := 0.6
+static var shadow_strength := 1.0
 
 
 class Scaffold extends Node2D:
@@ -131,10 +135,17 @@ func _add_extras() -> void:
 
 
 func _draw() -> void:
-	if SettingsManager.quality > 0 and not constructing:
-		# sombra projetada na calçada e no gramado vizinho
-		draw_colored_polygon(PackedVector2Array([Vector2(-w * 0.5, 0), Vector2(w * 0.5, 0), Vector2(w * 0.5 + 22, 12), Vector2(-w * 0.5 + 22, 12)]), Color(0, 0, 0, 0.16))
-		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.5, 0), Vector2(w * 0.5, -minf(h * 0.45, 90.0)), Vector2(w * 0.5 + 26, -minf(h * 0.45, 90.0) + 10), Vector2(w * 0.5 + 26, 0)]), Color(0, 0, 0, 0.12))
+	if SettingsManager.quality > 0 and not constructing and shadow_strength > 0.05:
+		# sombra projetada na calçada e no gramado vizinho, seguindo o sol
+		var d := shadow_dir
+		var a := shadow_strength
+		var dx := 26.0 * d
+		draw_colored_polygon(PackedVector2Array([Vector2(-w * 0.5, 0), Vector2(w * 0.5, 0), Vector2(w * 0.5 + dx, 12), Vector2(-w * 0.5 + dx, 12)]), Color(0, 0, 0, 0.22 * a))
+		var side := w * 0.5 * signf(d)
+		var sh := minf(h * (0.3 + 0.35 * absf(d)), 110.0)
+		var reach := (8.0 + 30.0 * absf(d)) * signf(d)
+		if absf(d) > 0.1:
+			draw_colored_polygon(PackedVector2Array([Vector2(side, 0), Vector2(side, -sh), Vector2(side + reach, -sh + 12), Vector2(side + reach, 0)]), Color(0, 0, 0, 0.16 * a))
 	BuildingArt.draw(self, id, level, 0)
 	if constructing:
 		return

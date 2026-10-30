@@ -7,8 +7,8 @@ signal toast(text: String, kind: String)
 signal city_reset
 
 const TICK := 0.1
-## Versão do formato do save. 1 = Idle City 1.0; 2 = Idle City 2.0.
-const SAVE_FORMAT := 2
+## Versão do formato do save. 1 = Idle City 1.0; 2 = 2.0; 3 = 3.0.
+const SAVE_FORMAT := 3
 const AUTOSAVE_INTERVAL := 15.0
 const MISSION_CHECK_INTERVAL := 0.5
 
@@ -50,6 +50,7 @@ func new_game() -> void:
 	PrestigeSystem.wipe()
 	MissionSystem.wipe()
 	ChallengeSystem.reset()
+	BoostSystem.reset_all()
 	EconomySystem.lifetime_earned = 0.0
 	_setup_fresh_city()
 	save_game()
@@ -61,7 +62,7 @@ func continue_game() -> bool:
 	if data.is_empty():
 		return false
 	if int(data.get("format", 1)) < SAVE_FORMAT:
-		SaveSystem.backup_old_format()
+		SaveSystem.backup_old_format(int(data.get("format", 1)))
 	apply_state(data)
 	return true
 
@@ -99,6 +100,7 @@ func collect_state() -> Dictionary:
 		"research": ResearchSystem.to_dict(),
 		"events": EventSystem.to_dict(),
 		"challenges": ChallengeSystem.to_dict(),
+		"boosts": BoostSystem.to_dict(),
 		"format": SAVE_FORMAT,
 	}
 
@@ -122,6 +124,12 @@ static func migrate(data: Dictionary) -> Dictionary:
 				data[k] = {}
 		data["format"] = 2
 		data["migrated_from"] = fmt
+	if int(data.get("format", 2)) < 3:
+		# 2.0 -> 3.0: bônus e recompensa diária começam zerados.
+		if not data.has("boosts"):
+			data["boosts"] = {}
+		data["format"] = 3
+		data["migrated_from"] = int(data.get("migrated_from", fmt))
 	return data
 
 
@@ -138,6 +146,8 @@ func apply_state(data: Dictionary) -> void:
 	ResearchSystem.from_dict(_section(data, "research"))
 	EventSystem.from_dict(_section(data, "events"))
 	ChallengeSystem.from_dict(_section(data, "challenges"))
+	BoostSystem.from_dict(_section(data, "boosts"))
+	CityIndexSystem.recompute()
 	PopulationSystem.recompute()
 	EconomySystem.recompute()
 
@@ -199,7 +209,9 @@ func _process(delta: float) -> void:
 
 
 func simulate(dt: float) -> void:
+	BoostSystem.tick(dt)
 	BuildingSystem.advance_construction(dt)
+	CityIndexSystem.recompute()
 	ResearchSystem.tick(dt)
 	EventSystem.tick(dt)
 	HappinessSystem.tick(dt)

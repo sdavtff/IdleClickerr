@@ -43,6 +43,8 @@ func compute(raw_seconds: float) -> Dictionary:
 		"by_cat": {}}
 	if secs <= 0.0:
 		return report
+	# Bônus temporários não multiplicam a renda offline; o tempo fora os consome.
+	BoostSystem.suspended = true
 	HappinessSystem.recompute()
 	PopulationSystem.recompute()
 	EconomySystem.recompute()
@@ -64,6 +66,8 @@ func compute(raw_seconds: float) -> Dictionary:
 		by_cat[k] = (float(cat_before.get(k, 0.0)) + float(EconomySystem.income_by_cat[k])) * 0.5 * secs
 	report["by_cat"] = by_cat
 	report["pop_after"] = PopulationSystem.population
+	BoostSystem.suspended = false
+	BoostSystem.skip(secs)
 	return report
 
 

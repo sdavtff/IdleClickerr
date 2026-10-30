@@ -41,7 +41,7 @@ func recompute() -> void:
 
 ## Felicidade alta atrai moradores mais rápido; baixa reduz o limite.
 func growth_speed() -> float:
-	return (0.35 + HappinessSystem.value / 100.0 * 1.15) * PrestigeSystem.growth_mult() * Modifiers.mult("growth")
+	return (0.35 + HappinessSystem.value / 100.0 * 1.15) * PrestigeSystem.growth_mult() * Modifiers.mult("growth") * CityIndexSystem.growth_mult()
 
 
 func tick(dt: float) -> void:

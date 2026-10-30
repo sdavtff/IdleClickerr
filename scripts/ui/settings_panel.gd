@@ -4,9 +4,10 @@ extends ModalPanel
 
 signal menu_requested
 signal reset_requested
+signal restore_requested(slot: int)
 
 const TOGGLES := [
-	["music", "Música"], ["sfx", "Efeitos sonoros"], ["day_night", "Ciclo de dia e noite"],
+	["music", "Música"], ["sfx", "Efeitos sonoros"], ["ambience", "Som ambiente da cidade"], ["day_night", "Ciclo de dia e noite"],
 	["weather", "Clima dinâmico (chuva)"], ["battery_saver", "Economia de bateria (30 FPS)"],
 	["floating_text", "Textos de renda flutuantes"], ["notifications", "Notificações na tela"],
 ]
@@ -44,7 +45,7 @@ func rebuild() -> void:
 	_quality_btn.custom_minimum_size = Vector2(0, 62)
 	_quality_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(_quality_btn)
-	for vol in [["music_volume", "Volume da música"], ["sfx_volume", "Volume dos efeitos"]]:
+	for vol in [["music_volume", "Volume da música"], ["sfx_volume", "Volume dos efeitos"], ["ambience_volume", "Volume do ambiente"]]:
 		var key: String = vol[0]
 		var row := UI.hbox(12)
 		list.content.add_child(row)
@@ -100,6 +101,25 @@ func rebuild() -> void:
 		"Conquistas: %d / %d" % [MissionSystem.achievements.size(), GameData.ACHIEVEMENTS.size()],
 	]:
 		sv.add_child(UI.label(line, 18, UI.C_TEXT))
+	var bk := UI.card(Color("eef3fb"))
+	list.content.add_child(bk)
+	var bv := UI.vbox(6)
+	bk.add_child(bv)
+	bv.add_child(UI.label("Cópias de segurança (recuperar progresso)", 21, UI.C_TEXT, true))
+	var snaps := SaveSystem.list_snapshots()
+	if snaps.is_empty():
+		bv.add_child(UI.label("As cópias são criadas automaticamente a cada 5 minutos de jogo.", 16, UI.C_MUTED))
+	for sn in snaps:
+		var row2 := UI.hbox(10)
+		bv.add_child(row2)
+		var dt := Time.get_datetime_dict_from_unix_time(int(sn["time"]) + int(Time.get_time_zone_from_system()["bias"]) * 60)
+		var l := UI.label("%02d/%02d %02d:%02d  —  %s, %d regiões" % [dt["day"], dt["month"], dt["hour"], dt["minute"], Fmt.money(sn["money"]), int(sn["regions"])], 18, UI.C_TEXT)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row2.add_child(l)
+		var slot: int = sn["slot"]
+		var rb := UI.button("Restaurar", UI.C_ORANGE, func(): restore_requested.emit(slot), 17)
+		rb.custom_minimum_size = Vector2(150, 48)
+		row2.add_child(rb)
 	var danger := UI.button("Apagar todo o progresso", UI.C_RED, func(): reset_requested.emit(), 18, true, "demolish")
 	danger.custom_minimum_size = Vector2(0, 54)
 	list.content.add_child(danger)

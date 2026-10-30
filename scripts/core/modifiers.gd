@@ -5,7 +5,7 @@ extends RefCounted
 
 
 static func get_fx(key: String) -> float:
-	return ResearchSystem.fx(key) + EventSystem.fx(key)
+	return ResearchSystem.fx(key) + EventSystem.fx(key) + BoostSystem.fx(key)
 
 
 ## Multiplicador (1 + soma), nunca abaixo de `floor_value`.

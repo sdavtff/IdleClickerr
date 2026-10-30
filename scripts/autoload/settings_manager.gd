@@ -10,6 +10,8 @@ var sfx := true
 var music := true
 var music_volume := 0.7
 var sfx_volume := 0.9
+var ambience := true
+var ambience_volume := 0.6
 var day_night := true
 var weather := true
 ## 0 = baixa, 1 = média, 2 = alta.
@@ -37,6 +39,8 @@ func load_settings() -> void:
 	music = bool(cfg.get_value("audio", "music", true))
 	music_volume = clampf(float(cfg.get_value("audio", "music_volume", 0.7)), 0.0, 1.0)
 	sfx_volume = clampf(float(cfg.get_value("audio", "sfx_volume", 0.9)), 0.0, 1.0)
+	ambience = bool(cfg.get_value("audio", "ambience", true))
+	ambience_volume = clampf(float(cfg.get_value("audio", "ambience_volume", 0.6)), 0.0, 1.0)
 	day_night = bool(cfg.get_value("video", "day_night", true))
 	weather = bool(cfg.get_value("video", "weather", true))
 	if cfg.has_section_key("video", "quality"):
@@ -54,6 +58,8 @@ func save_settings() -> void:
 	cfg.set_value("audio", "music", music)
 	cfg.set_value("audio", "music_volume", music_volume)
 	cfg.set_value("audio", "sfx_volume", sfx_volume)
+	cfg.set_value("audio", "ambience", ambience)
+	cfg.set_value("audio", "ambience_volume", ambience_volume)
 	cfg.set_value("video", "day_night", day_night)
 	cfg.set_value("video", "weather", weather)
 	cfg.set_value("video", "quality", quality)

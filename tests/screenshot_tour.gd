@@ -36,6 +36,8 @@ func _run() -> void:
 	GameManager.new_game()
 	game = load("res://scenes/Game.tscn").instantiate()
 	add_child(game)
+	await shot("02a_login", 40)
+	game.boost_panel.close_panel()
 	await shot("02_start", 30)
 	EconomySystem.add_money(5000, false)
 	BuildingSystem.build("mercado")
@@ -51,7 +53,7 @@ func _run() -> void:
 		ExpansionSystem.region_unlocked.emit(i + 1)
 	for r in ["t1", "t2", "t3", "t4", "i1", "e1", "a1", "m1"]:
 		ResearchSystem.force_complete(r)
-	for id in ["casa_moderna", "restaurante", "hospital", "delegacia", "academia", "biblioteca", "casa_moderna", "apartamento", "supermercado", "escritorio", "bombeiros", "prefeitura", "cinema", "apartamento", "fabrica", "usina_solar", "shopping", "casa_luxo", "centro_distribuicao", "monumento", "praca", "deposito", "estacao_metro", "porto"]:
+	for id in ["casa_moderna", "restaurante", "hospital", "delegacia", "academia", "biblioteca", "casa_moderna", "apartamento", "supermercado", "escritorio", "bombeiros", "prefeitura", "cinema", "apartamento", "fabrica", "usina_solar", "shopping", "casa_luxo", "centro_distribuicao", "monumento", "praca", "deposito", "estacao_metro", "porto", "posto_saude", "terminal_onibus", "reciclagem"]:
 		BuildingSystem.build(id)
 	var i := 0
 	for b in BuildingSystem.buildings:
@@ -70,7 +72,7 @@ func _run() -> void:
 	await shot("05_city_locked", 20)
 	# edifícios novos e especiais em regiões avançadas
 	var lot := GameData.LOTS_PER_REGION * 5
-	for id in ["complexo_financeiro", "aeroporto", "torre_iconica", "resort", "marina", "bolsa_valores"]:
+	for id in ["complexo_financeiro", "aeroporto", "torre_iconica", "resort", "marina", "bolsa_valores", "centro_pesquisa", "torre_comercial"]:
 		var b2 := {"uid": 900 + lot, "id": id, "lot": lot, "level": 1, "build_left": 0.0}
 		BuildingSystem._add(b2)
 		BuildingSystem.building_built.emit(b2)
@@ -147,6 +149,24 @@ func _run() -> void:
 	game.stats_panel.open_panel()
 	await shot("28_population", 20)
 	game.stats_panel.close_panel()
+	BoostSystem.add("renda", 600)
+	BoostSystem.add("obras", 300)
+	game.boost_panel.current_tab = 0
+	game.boost_panel.open_panel()
+	await shot("29_boosts", 20)
+	game.boost_panel.close_panel()
+	await shot("30_boost_hud", 20)
+	for k in 20:
+		EconomySystem.record_history()
+	game.stats_panel.current_tab = 3
+	game.stats_panel.open_panel()
+	await shot("31_quality", 20)
+	game.stats_panel.close_panel()
+	game.city.day_night.t = 0.27
+	await shot("32_fog", 30)
+	game.city.day_night.t = 0.33
+	await shot("33_morning_shadows", 20)
+	game.city.day_night.t = 0.45
 	game.settings_panel.open_panel()
 	await shot("18_settings", 20)
 	game.settings_panel.close_panel()

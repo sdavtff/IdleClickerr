@@ -90,8 +90,10 @@ func compute_rate() -> float:
 			w = 0.04
 		if w > 0.0:
 			rate += w * (1.0 + int(def["region"])) * pow(float(b["level"]), 0.6)
+		if def.has("rp"):
+			rate += float(def["rp"]) * pow(float(b["level"]), 0.6)
 	rate *= 1.0 + 0.25 * PrestigeSystem.level("laboratorio")
-	rate *= 1.0 + EventSystem.fx("rp")
+	rate *= 1.0 + Modifiers.get_fx("rp")
 	return rate
 
 

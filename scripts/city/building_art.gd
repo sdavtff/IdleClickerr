@@ -30,6 +30,8 @@ const HEIGHTS := {
 	"mercado": [132, 0], "praca": [124, 0], "deposito": [142, 0], "monumento": [236, 0],
 	"estacao_metro": [150, 0], "porto": [236, 0], "complexo_financeiro": [380, 14],
 	"aeroporto": [246, 0], "torre_iconica": [440, 0], "resort": [262, 0], "marina": [236, 0],
+	"posto_saude": [124, 0], "terminal_onibus": [128, 0], "reciclagem": [168, 0],
+	"centro_pesquisa": [270, 14], "torre_comercial": [360, 16],
 }
 
 static var _font: Font
@@ -159,6 +161,16 @@ static func draw(ci: CanvasItem, id: String, level: int, mode: int) -> void:
 			_b_resort(ci, mode, t, h, w)
 		"marina":
 			_b_marina(ci, mode, t, h, w)
+		"posto_saude":
+			_b_posto_saude(ci, mode, t, h, w)
+		"terminal_onibus":
+			_b_terminal_onibus(ci, mode, t, h, w)
+		"reciclagem":
+			_b_reciclagem(ci, mode, t, h, w)
+		"centro_pesquisa":
+			_b_centro_pesquisa(ci, mode, t, h, w)
+		"torre_comercial":
+			_b_torre_comercial(ci, mode, t, h, w)
 		_:
 			_tower(ci, mode, -w * 0.5, -h, w, h, Color("c0c8d8"), 4, id.hash())
 	_tier_decor(ci, mode, t, id, h, w)
@@ -366,7 +378,8 @@ const ROOFS := {
 	"prefeitura": [0, 22, 0], "academia": [0, 16, 164], "cinema": [0, 36, 172],
 	"centro_entretenimento": [0, 0, 120], "mercado": [0, 6, 150], "deposito": [0, 26, 150],
 	"estacao_metro": [30, 40, 110], "complexo_financeiro": [-30, 0, 70], "aeroporto": [-40, 120, 140],
-	"resort": [0, 30, 180],
+	"resort": [0, 30, 180], "posto_saude": [0, 18, 150], "terminal_onibus": [0, 40, 190],
+	"reciclagem": [-40, 60, 110], "centro_pesquisa": [-20, 0, 120], "torre_comercial": [0, 0, 140],
 }
 
 
@@ -1461,3 +1474,113 @@ static func _b_marina(ci: CanvasItem, m: int, t: int, h: float, w: float) -> voi
 		ci.draw_colored_polygon(pv([78, -h + 28, -116, -h - 10, -116, -h + 70]), Color(1, 1, 0.8, 0.22))
 		ci.draw_circle(Vector2(78, -h + 28), 20, Color(1, 1, 0.8, 0.6))
 	signboard(ci, m, -112, -26, 70, 18, Color("01579b"), WHITE, "MARINA", 12)
+
+
+# =============================================================================
+# Novos na 3.0
+# =============================================================================
+
+static func _b_posto_saude(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	box(ci, m, -72, -h + 18, 144, h - 18, Color("f4fbff"))
+	flat(ci, m, -72, -h + 18, 144, 8, Color("26a69a"))
+	signboard(ci, m, -48, -h + 2, 96, 22, Color("26a69a"), WHITE, "POSTO DE SAÚDE", 11)
+	_cross(ci, m, Vector2(-44, -70), 9, Color("e53935"))
+	window(ci, m, -18, -78, 30, 26, 70)
+	window(ci, m, 30, -78, 30, 26, 71)
+	glass_door(ci, m, -22, -44, 44, 44)
+	box(ci, m, -32, -52, 64, 8, Color("26a69a"), false)
+	bush(ci, m, -72, 0, 22, Color("66bb6a"), Color("ffffff"))
+	bush(ci, m, 52, 0, 20, Color("66bb6a"), Color("ffeb3b"))
+
+
+static func _b_terminal_onibus(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	# cobertura sobre colunas
+	poly(ci, m, [-104, -h + 40, -90, -h + 10, 90, -h + 10, 104, -h + 40], Color("ffb300"))
+	for x in [-90, -30, 30, 86]:
+		box(ci, m, x - 3, -h + 40, 6, h - 44, Color("90a4ae"), false)
+	signboard(ci, m, -62, -h + 14, 124, 20, Color("1565c0"), WHITE, "TERMINAL", 14)
+	box(ci, m, -100, -48, 70, 44, Color("eceff1"))
+	window(ci, m, -92, -40, 54, 22, 72)
+	if m == 0:
+		# ônibus parado
+		ci.draw_rect(Rect2(-14, -58, 110, 50), OUT)
+		ci.draw_rect(Rect2(-11, -55, 104, 44), Color("43a047"))
+		for i in 4:
+			ci.draw_rect(Rect2(-5 + i * 24, -50, 18, 16), Color("bfe6fa"))
+		ci.draw_rect(Rect2(-11, -30, 104, 4), WHITE)
+		ci.draw_circle(Vector2(8, -8), 8, OUT)
+		ci.draw_circle(Vector2(72, -8), 8, OUT)
+		ci.draw_circle(Vector2(8, -8), 3, Color("b0bec5"))
+		ci.draw_circle(Vector2(72, -8), 3, Color("b0bec5"))
+	else:
+		ci.draw_rect(Rect2(-11, -55, 104, 22), Color(1, 0.9, 0.6, 0.6))
+		ci.draw_circle(Vector2(0, -h + 25), 40, Color(1, 0.85, 0.4, 0.2))
+
+
+static func _b_reciclagem(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	box(ci, m, -100, -108, 120, 108, Color("e8f5e9"))
+	flat(ci, m, -100, -108, 120, 10, Color("43a047"))
+	window_grid(ci, m, -98, -94, 18, -50, 3, 1, 22, 20, 73)
+	# símbolo de reciclagem
+	if m == 0:
+		for i in 3:
+			var a := -PI / 2 + i * TAU / 3.0
+			var c := Vector2(-40, -30) + Vector2(cos(a), sin(a)) * 11
+			ci.draw_arc(c, 8, a + 0.8, a + 3.6, 10, Color("2e7d32"), 4.0)
+	# silos e esteira
+	for i in 2:
+		var x := 32 + i * 34.0
+		box(ci, m, x, -h + 30, 28, h - 30, Color("81c784"))
+		poly(ci, m, [x, -h + 30, x + 14, -h + 14, x + 28, -h + 30], Color("66bb6a"))
+	if m == 0:
+		ci.draw_line(Vector2(-10, -60), Vector2(46, -100), OUT, 6.0)
+		ci.draw_line(Vector2(-10, -60), Vector2(46, -100), Color("9e9e9e"), 3.0)
+		var bins := [Color("1e88e5"), Color("fdd835"), Color("e53935"), Color("43a047")]
+		for i in 4:
+			ci.draw_rect(Rect2(-98 + i * 26, -22, 22, 22), OUT)
+			ci.draw_rect(Rect2(-96 + i * 26, -20, 18, 18), bins[i])
+	signboard(ci, m, 24, -24, 76, 18, Color("2e7d32"), WHITE, "RECICLA", 12)
+
+
+static func _b_centro_pesquisa(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	box(ci, m, -96, -150, 120, 150, WHITE)
+	glass_grid(ci, m, -90, -144, 18, -40, 4, 26, Color("b3e5fc"), 74)
+	box(ci, m, 24, -h + 50, 72, h - 50, Color("eceff1"))
+	window_grid(ci, m, 26, -h + 60, 94, -60, 2, int((h - 120) / 32), 18, 18, 75)
+	# cúpula do observatório
+	circle(ci, m, Vector2(-36, -150), 38, Color("cfd8dc"))
+	if m == 0:
+		ci.draw_rect(Rect2(-76, -152, 80, 6), OUT)
+		ci.draw_rect(Rect2(-44, -186, 10, 34), Color("455a64"))
+		ci.draw_line(Vector2(-40, -186), Vector2(-14, -h + 6), OUT, 5.0)
+	else:
+		ci.draw_circle(Vector2(-36, -160), 26, Color(0.5, 0.8, 1.0, 0.35))
+	# antena parabólica
+	if m == 0:
+		ci.draw_line(Vector2(60, -h + 50), Vector2(60, -h + 20), OUT, 4.0)
+		ci.draw_arc(Vector2(60, -h + 14), 18, PI * 0.15, PI * 0.85, 12, OUT, 6.0)
+		ci.draw_arc(Vector2(60, -h + 14), 18, PI * 0.15, PI * 0.85, 12, Color("eceff1"), 3.0)
+	signboard(ci, m, -88, -36, 104, 18, Color("5e35b1"), WHITE, "PESQUISA", 13)
+	glass_door(ci, m, 40, -40, 40, 40)
+
+
+static func _b_torre_comercial(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var body := Color("e57373")
+	box(ci, m, -80, -h + 40, 160, h - 40, body.darkened(0.15))
+	glass_grid(ci, m, -74, -h + 48, 74, -110, 5, 24, Color("f8bbd0"), 76)
+	# mirante
+	poly(ci, m, [-90, -h + 40, -70, -h + 10, 70, -h + 10, 90, -h + 40], Color("ad1457"))
+	if m == 0:
+		ci.draw_line(Vector2(0, -h + 10), Vector2(0, -h - 26), OUT, 3.0)
+		ci.draw_rect(Rect2(-60, -h + 20, 120, 12), GLASS)
+	else:
+		ci.draw_rect(Rect2(-60, -h + 20, 120, 12), Color(1, 0.85, 0.95, 0.9))
+		ci.draw_circle(Vector2(0, -h - 26), 10, Color(1, 0.3, 0.6, 0.6))
+	# base com lojas e marquises coloridas
+	box(ci, m, -90, -110, 180, 110, Color("fce4ec"))
+	awning(ci, m, -86, -66, 54, 12, Color("ff7043"), WHITE)
+	awning(ci, m, -27, -66, 54, 12, Color("42a5f5"), WHITE)
+	awning(ci, m, 32, -66, 54, 12, Color("66bb6a"), WHITE)
+	for x in [-82, -23, 36]:
+		window(ci, m, x, -52, 46, 40, 77)
+	signboard(ci, m, -74, -104, 148, 24, Color("ad1457"), WHITE, "TORRE COMERCIAL", 14)

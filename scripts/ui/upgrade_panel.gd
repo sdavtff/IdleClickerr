@@ -119,6 +119,12 @@ func refresh() -> void:
 			r["thumb"].level = lv
 			r["thumb"].queue_redraw()
 		var btn: Button = r["button"]
+		if not BuildingSystem.is_complete(b):
+			r["delta"].text = "Em construção — faltam %s" % Fmt.short_duration(ceilf(float(b["build_left"])))
+			r["milestone"].text = "Toque em Detalhes para acelerar a obra."
+			btn.text = "EM OBRA"
+			btn.disabled = true
+			continue
 		if lv >= GameData.MAX_LEVEL:
 			r["delta"].text = "Nível máximo alcançado!"
 			r["milestone"].text = ""

@@ -307,7 +307,33 @@ def icon_challenge():
     save(img, "challenge")
 
 
+def icon_gift():
+    img, d = canvas()
+    d.rounded_rectangle(P(10, 40, 86, 92), radius=8 * S, fill=DARK)
+    d.rounded_rectangle(P(15, 45, 81, 87), radius=6 * S, fill=(235, 90, 80, 255))
+    d.rounded_rectangle(P(6, 26, 90, 46), radius=6 * S, fill=DARK)
+    d.rounded_rectangle(P(11, 30, 85, 42), radius=4 * S, fill=(245, 120, 100, 255))
+    d.rectangle(P(42, 26, 54, 92), fill=DARK)
+    d.rectangle(P(44, 30, 52, 87), fill=(255, 205, 60, 255))
+    d.ellipse(P(22, 6, 50, 30), fill=DARK)
+    d.ellipse(P(46, 6, 74, 30), fill=DARK)
+    d.ellipse(P(27, 11, 46, 26), fill=(255, 205, 60, 255))
+    d.ellipse(P(50, 11, 69, 26), fill=(255, 205, 60, 255))
+    save(img, "gift")
+
+
+def icon_traffic():
+    img, d = canvas()
+    d.rounded_rectangle(P(28, 4, 68, 92), radius=12 * S, fill=DARK)
+    d.rounded_rectangle(P(33, 9, 63, 87), radius=9 * S, fill=(60, 66, 90, 255))
+    for i, c in enumerate(((235, 90, 80, 255), (255, 196, 40, 255), (60, 200, 110, 255))):
+        d.ellipse(P(38, 14 + i * 24, 58, 34 + i * 24), fill=c)
+    save(img, "traffic")
+
+
 def make_icons():
+    icon_gift()
+    icon_traffic()
     icon_research()
     icon_event()
     icon_bank()
@@ -484,11 +510,51 @@ def make_audio():
     th = np.convolve(th, np.ones(30) / 30, mode="same") * np.exp(-np.arange(th.size) / RATE * 2.2) * 1.6
     write_wav("thunder", th)
     write_wav("complete", seq([tone(784, 0.08, "tri", 0.35), tone(1047, 0.08, "tri", 0.35), mix(tone(1568, 0.35, "tri", 0.35), tone(784, 0.35, "sine", 0.15))]))
+    # Novos na 3.0
+    write_wav("boost", np.concatenate([np.sin(2 * np.pi * np.cumsum(np.linspace(300, 1400, int(RATE * 0.35))) / RATE) * np.linspace(0.05, 0.3, int(RATE * 0.35)), tone(1568, 0.3, "tri", 0.3)]))
+    write_wav("login", seq([tone(f, 0.09, "tri", 0.35) for f in (523, 659, 784, 1047, 1319)] + [mix(tone(1568, 0.5, "sine", 0.3), tone(784, 0.5, "tri", 0.2))]))
+    write_wav("ambience_day", make_ambience(day=True))
+    write_wav("ambience_night", make_ambience(day=False))
+    write_wav("music_night", make_music(night=True))
     write_wav("music", make_music())
 
 
-def make_music():
+def make_ambience(day=True):
+    """Ambiente em loop de 16 s: pássaros e trânsito distante (dia) ou grilos (noite)."""
+    n = int(RATE * 16)
+    t = np.arange(n) / RATE
+    rng = np.random.RandomState(11 if day else 12)
+    noise = rng.uniform(-1, 1, n)
+    # ruído grave suavizado = cidade ao longe
+    k = 400 if day else 900
+    hum = np.convolve(noise, np.ones(k) / k, mode="same") * (6.0 if day else 3.0)
+    out = hum * 0.5
+    if day:
+        for i in range(14):
+            start = rng.randint(0, n - RATE)
+            f0 = rng.uniform(2200, 3600)
+            for j in range(rng.randint(2, 5)):
+                s0 = start + j * int(RATE * 0.11)
+                ln = int(RATE * 0.07)
+                tt = np.arange(ln) / RATE
+                chirp = np.sin(2 * np.pi * (f0 + 900 * np.sin(tt * 60)) * tt) * np.sin(np.pi * tt / tt[-1]) * 0.08
+                out[s0:s0 + ln] += chirp[: max(0, min(ln, n - s0))]
+    else:
+        for c in range(3):
+            f = 4200 + c * 350
+            rate = 13 + c * 3
+            env = (np.sin(2 * np.pi * rate * t + c) > 0.6).astype(float) * (0.5 + 0.5 * np.sin(2 * np.pi * 0.3 * t + c * 2))
+            out += np.sin(2 * np.pi * f * t) * env * 0.035
+    fade = int(RATE * 0.5)
+    out[:fade] *= np.linspace(0, 1, fade)
+    out[-fade:] *= np.linspace(1, 0, fade)
+    return out
+
+
+def make_music(night=False):
     """Loop calmo de 32 compassos curtos (acordes + arpejo pentatônico)."""
+    if night:
+        return make_night_music()
     bpm = 96
     beat = 60 / bpm
     total_beats = 64
@@ -523,6 +589,38 @@ def make_music():
                 out[s:e] += note[: e - s]
     # leve fade nas bordas para o loop não estalar
     fade = int(RATE * 0.05)
+    out[:fade] *= np.linspace(0, 1, fade)
+    out[-fade:] *= np.linspace(1, 0, fade)
+    return out
+
+
+def make_night_music():
+    """Música noturna: andamento lento, acordes suaves em lá menor."""
+    bpm = 70
+    beat = 60 / bpm
+    total_beats = 48
+    n = int(RATE * beat * total_beats)
+    out = np.zeros(n)
+    chords = [(220.0, 261.63, 329.63), (174.61, 220.0, 261.63), (196.0, 246.94, 293.66), (164.81, 207.65, 246.94)]
+    rng = random.Random(9)
+    scale = [440.0, 523.25, 587.33, 659.25, 783.99]
+    t_beat = int(RATE * beat)
+    for bar in range(total_beats // 4):
+        ch = chords[bar % 4]
+        start = bar * 4 * t_beat
+        dur = 4 * beat
+        t = np.arange(int(RATE * dur)) / RATE
+        env = np.minimum(1, t / 0.8) * np.minimum(1, (dur - t) / 0.8)
+        pad = sum(np.sin(2 * np.pi * f * t) for f in ch) * 0.05 * env
+        end = min(n, start + pad.size)
+        out[start:end] += pad[: end - start]
+        for i in range(4):
+            if rng.random() < 0.6:
+                note = tone(rng.choice(scale), beat * 1.6, "sine", 0.06, attack=0.05, decay=beat * 2)
+                s0 = start + i * t_beat
+                e0 = min(n, s0 + note.size)
+                out[s0:e0] += note[: e0 - s0]
+    fade = int(RATE * 0.1)
     out[:fade] *= np.linspace(0, 1, fade)
     out[-fade:] *= np.linspace(1, 0, fade)
     return out

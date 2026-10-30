@@ -7,7 +7,7 @@ config_version=5
 
 config/name="Idle City"
 config/description="Transforme uma pequena vila em uma megacidade."
-config/version="2.0.0"
+config/version="3.0.0"
 run/main_scene="res://scenes/Boot.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 run/max_fps=60
@@ -31,7 +31,10 @@ IdleSystem="*res://scripts/systems/idle_system.gd"
 ResearchSystem="*res://scripts/systems/research_system.gd"
 EventSystem="*res://scripts/systems/event_system.gd"
 ChallengeSystem="*res://scripts/systems/challenge_system.gd"
+CityIndexSystem="*res://scripts/systems/city_index_system.gd"
+BoostSystem="*res://scripts/systems/boost_system.gd"
 GameManager="*res://scripts/autoload/game_manager.gd"
+SelfTest="*res://scripts/autoload/self_test.gd"
 
 [display]
 

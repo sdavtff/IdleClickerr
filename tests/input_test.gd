@@ -68,6 +68,9 @@ func _ready() -> void:
 	game = load("res://scenes/Game.tscn").instantiate()
 	add_child(game)
 	await frames(20)
+	check(game.boost_panel.visible, "recompensa diária abre ao entrar no jogo")
+	await tap(Vector2(20, 400))
+	check(not game.boost_panel.visible, "tocar fora fecha a recompensa diária")
 	var city: CityView = game.city
 	# toque num edifício abre detalhes
 	var n: BuildingNode = city.building_nodes.values()[0]

@@ -16,6 +16,10 @@ static func stats_lines(def: Dictionary, level: int) -> Array[String]:
 		out.append("Empregos: " + Fmt.pop(BuildingSystem.jobs_of(b)))
 	if def.has("service"):
 		out.append("%s: atende %s" % [GameData.SERVICE_NAMES[def["service"]], Fmt.pop(BuildingSystem.coverage_of(b))])
+	if def.has("transit"):
+		out.append("Transporte: %s pessoas" % Fmt.pop(CityIndexSystem.transit_of(b)))
+	if def.has("rp"):
+		out.append("Pesquisa: +%s/s" % Fmt.num(float(def["rp"]) * pow(float(level), 0.6)))
 	if def.has("happy"):
 		out.append("Felicidade +%d%%" % int(def["happy"]))
 	if def.has("income_bonus"):

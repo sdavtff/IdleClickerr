@@ -13,6 +13,8 @@ signal open_stats(tab: int)
 signal open_finance
 signal open_research
 signal open_events
+signal open_boosts
+signal jump_to(world_x: float)
 
 var money_l: Label
 var income_l: Label
@@ -34,6 +36,10 @@ var event_banner: PanelContainer
 var event_l: Label
 var event_bar: ProgressBar
 var _slow_acc := 1.0
+var gift_badge: Label
+var boost_row: HBoxContainer
+var minimap: Minimap
+var city: CityView
 var toasts: VBoxContainer
 var _last_face := ""
 var _shown_money := -1.0
@@ -120,6 +126,12 @@ func _build_top() -> void:
 	rp_l = UI.outlined(UI.label("0", 26, Color.WHITE, true), 6)
 	rp[0].add_child(rp_l)
 	rp[0].add_child(UI.outlined(UI.label("pesquisa", 15, Color("d9ccff")), 4))
+	var gift := UI.button("", Color("d84315"), func(): open_boosts.emit(), 18, false, "gift")
+	gift.custom_minimum_size = Vector2(64, 64)
+	gift.add_theme_constant_override("icon_max_width", 44)
+	gift.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bar.add_child(gift)
+	gift_badge = _badge(gift, Vector2(42, -8))
 	bar.add_child(UI.spacer())
 	clock_l = UI.outlined(UI.label("08:00", 24, Color.WHITE, true), 6)
 	clock_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -158,6 +170,54 @@ func _build_bottom() -> void:
 	expansion_badge = _menu_button(bar, "Expansão", "map", Color("16a596"), func(): open_expansion.emit())
 	_menu_button(bar, "Prestígio", "star", UI.C_PURPLE, func(): open_prestige.emit())
 	_build_event_banner()
+	boost_row = UI.hbox(6)
+	boost_row.position = Vector2(12, 84)
+	boost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(boost_row)
+	minimap = Minimap.new()
+	minimap.anchor_left = 1.0
+	minimap.anchor_right = 1.0
+	minimap.offset_left = -330
+	minimap.offset_right = -10
+	minimap.offset_top = 84
+	minimap.offset_bottom = 120
+	minimap.city = city
+	minimap.jump.connect(func(x): jump_to.emit(x))
+	add_child(minimap)
+	BoostSystem.boosts_changed.connect(_rebuild_boost_row)
+	_rebuild_boost_row()
+
+
+func _rebuild_boost_row() -> void:
+	UI.clear(boost_row)
+	for id in BoostSystem.active.keys():
+		var def := GameData.boost_def(id)
+		var p := PanelContainer.new()
+		var s := UI.style(Color(0.95, 0.55, 0.05, 0.92), 14, 2, Color("7a2a00"), 3)
+		s.content_margin_left = 6
+		s.content_margin_right = 10
+		s.content_margin_top = 2
+		s.content_margin_bottom = 2
+		p.add_theme_stylebox_override("panel", s)
+		p.mouse_filter = Control.MOUSE_FILTER_STOP
+		p.gui_input.connect(func(ev):
+			if ev is InputEventMouseButton and not ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+				open_boosts.emit())
+		var h := UI.hbox(4)
+		p.add_child(h)
+		h.add_child(UI.icon_rect(def["icon"], 26))
+		var l := UI.outlined(UI.label("", 16, Color.WHITE, true), 4, Color("5a1f00"))
+		l.set_meta("boost", id)
+		h.add_child(l)
+		boost_row.add_child(p)
+	_update_boost_labels()
+
+
+func _update_boost_labels() -> void:
+	for p in boost_row.get_children():
+		var l: Label = p.get_child(0).get_child(1)
+		var id: String = l.get_meta("boost")
+		l.text = "x2  " + Fmt.short_duration(BoostSystem.time_left(id))
 
 
 func _build_event_banner() -> void:
@@ -204,6 +264,10 @@ func _menu_button(parent: Control, text: String, icon_name: String, col: Color, 
 	b.add_theme_constant_override("outline_size", 5)
 	b.add_theme_color_override("font_outline_color", col.darkened(0.45))
 	parent.add_child(b)
+	return _badge(b, Vector2(110, -8))
+
+
+func _badge(b: Control, pos: Vector2) -> Label:
 	var badge := UI.outlined(UI.label("!", 18, Color.WHITE, true, HORIZONTAL_ALIGNMENT_CENTER), 4, Color("8b1a12"))
 	var bs := UI.style(UI.C_RED, 14, 2, Color.WHITE)
 	bs.content_margin_left = 6
@@ -211,7 +275,7 @@ func _menu_button(parent: Control, text: String, icon_name: String, col: Color, 
 	bs.content_margin_top = 0
 	bs.content_margin_bottom = 0
 	badge.add_theme_stylebox_override("normal", bs)
-	badge.position = Vector2(110, -8)
+	badge.position = pos
 	badge.custom_minimum_size = Vector2(30, 28)
 	badge.visible = false
 	b.add_child(badge)
@@ -246,6 +310,7 @@ func update_stats() -> void:
 	missions_badge.visible = ready > 0
 	missions_badge.text = str(ready)
 	rp_l.text = Fmt.num(floorf(ResearchSystem.points))
+	_update_boost_labels()
 	_update_event_banner()
 	_slow_acc += 0.1
 	if _slow_acc < 0.5:
@@ -257,6 +322,10 @@ func update_stats() -> void:
 	events_badge.visible = ch > 0
 	events_badge.text = str(ch)
 	research_badge.visible = ResearchSystem.active_id == "" and _any_research_available()
+	var gifts := (1 if BoostSystem.login_available() else 0) + (1 if BoostSystem.free_ready_in() <= 0.0 else 0)
+	gift_badge.visible = gifts > 0
+	gift_badge.text = str(gifts)
+	minimap.queue_redraw()
 	var mat := EconomySystem.matured_investments().size()
 	finance_badge.visible = mat > 0
 	finance_badge.text = str(mat)

@@ -26,6 +26,11 @@ func _ready() -> void:
 	test_migration_v1()
 	test_offline_v2()
 	test_new_buildings()
+	test_city_index()
+	test_boosts()
+	test_login()
+	test_snapshots()
+	test_migration_v2()
 	if "--balance" in OS.get_cmdline_user_args():
 		balance_sim()
 	print("=== %d passaram, %d falharam ===" % [passed, failed])
@@ -442,7 +447,7 @@ func test_migration_v1() -> void:
 	check(EconomySystem.tax_level == 1 and ResearchSystem.done.is_empty(), "novos sistemas com valores padrão")
 	check(FileAccess.file_exists(SaveSystem.OLD_FORMAT_BACKUP), "cópia de segurança do save antigo")
 	GameManager.save_game()
-	check(int(SaveSystem.read().get("format", 0)) == 2, "save regravado no formato 2")
+	check(int(SaveSystem.read().get("format", 0)) == GameManager.SAVE_FORMAT, "save regravado no formato atual")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.OLD_FORMAT_BACKUP))
 
 
@@ -470,7 +475,7 @@ func test_offline_v2() -> void:
 
 func test_new_buildings() -> void:
 	print("[2.0: Novas construções]")
-	check(GameData.BUILDINGS.size() >= 48, "%d tipos de edifícios" % GameData.BUILDINGS.size())
+	check(GameData.BUILDINGS.size() >= 53, "%d tipos de edifícios" % GameData.BUILDINGS.size())
 	check(GameData.buildings_in_category("esp").size() >= 5, "categoria Especiais")
 	check(GameData.region_count() == 8, "8 regiões (Orla Dourada)")
 	var ok := true
@@ -493,6 +498,124 @@ func test_new_buildings() -> void:
 	check(EconomySystem.income_ps > 0 and not is_nan(EconomySystem.income_ps), "economia estável com todos os edifícios")
 	var r0 := ExpansionSystem.unlocked
 	check(r0 == 8, "regiões")
+
+
+func test_city_index() -> void:
+	print("[3.0: Índices urbanos]")
+	fresh()
+	ExpansionSystem.unlocked = 3
+	EconomySystem.money = 1e9
+	PopulationSystem.population = 50
+	CityIndexSystem.recompute()
+	check(CityIndexSystem.traffic == 0.0, "cidade pequena sem trânsito")
+	PopulationSystem.population = 6000
+	CityIndexSystem.recompute()
+	var jam := CityIndexSystem.traffic
+	check(jam > 50.0 and CityIndexSystem.productivity < 1.0, "população grande congestiona e reduz produtividade (%d%%)" % int(jam))
+	HappinessSystem.recompute()
+	check(HappinessSystem.factors.any(func(f): return f["name"] == "Trânsito"), "trânsito afeta a felicidade")
+	for i in 3:
+		BuildingSystem.build("terminal_onibus")
+	CityIndexSystem.recompute()
+	check(CityIndexSystem.traffic < jam, "terminais de ônibus reduzem o trânsito")
+	var p0 := CityIndexSystem.pollution
+	ExpansionSystem.unlocked = 4
+	BuildingSystem.build("fabrica")
+	CityIndexSystem.recompute()
+	check(CityIndexSystem.pollution > p0, "fábrica aumenta a poluição")
+	var p1 := CityIndexSystem.pollution
+	BuildingSystem.build("reciclagem")
+	CityIndexSystem.recompute()
+	check(CityIndexSystem.pollution < p1, "reciclagem reduz a poluição")
+	check(CityIndexSystem.quality_of_life >= 0.0 and CityIndexSystem.quality_of_life <= 100.0 and CityIndexSystem.grade() != "", "qualidade de vida 0-100 com nota")
+
+
+func test_boosts() -> void:
+	print("[3.0: Bônus temporários]")
+	fresh()
+	EconomySystem.money = 1e6
+	BuildingSystem.build("loja_conveniencia")
+	for i in 50:
+		GameManager.simulate(0.2)
+	EconomySystem.recompute()
+	var inc := EconomySystem.income_ps
+	BoostSystem.last_free = 0.0
+	check(BoostSystem.claim_free("renda"), "incentivo grátis ativa bônus")
+	EconomySystem.recompute()
+	check(near(EconomySystem.income_ps, inc * 2.0, 0.02), "renda em dobro")
+	check(not BoostSystem.claim_free("obras"), "incentivo tem recarga de 3 horas")
+	BoostSystem.last_free = Time.get_unix_time_from_system() + 99999.0
+	check(BoostSystem.free_ready_in() <= GameData.FREE_BOOST_COOLDOWN + 1.0, "relógio voltando não trava nem libera o incentivo")
+	BoostSystem.add("obras", 100)
+	check(BuildingSystem.build_time("hospital") < GameData.base_build_time(GameData.get_def("hospital")) * 0.6, "obras turbo")
+	BoostSystem.tick(10000)
+	check(BoostSystem.active.is_empty(), "bônus expiram")
+	BoostSystem.add("renda", 3600)
+	var r := IdleSystem.compute(1800)
+	EconomySystem.recompute()
+	check(near(r["money"], inc * 1800, 0.25) and near(BoostSystem.time_left("renda"), 1800, 0.01), "bônus não multiplica a renda offline e é consumido")
+	BoostSystem.add("renda", 99999)
+	check(BoostSystem.time_left("renda") <= GameData.BOOST_MAX_SECONDS, "duração máxima de 2 horas")
+
+
+func test_login() -> void:
+	print("[3.0: Recompensa diária]")
+	fresh()
+	check(BoostSystem.login_available() and BoostSystem.next_login_day() == 1, "primeiro dia disponível")
+	var m0 := EconomySystem.money
+	check(not BoostSystem.claim_login().is_empty() and EconomySystem.money > m0, "dia 1 dá dinheiro")
+	check(not BoostSystem.login_available() and BoostSystem.claim_login().is_empty(), "só uma vez por dia")
+	var today := ChallengeSystem.current_day_key()
+	var yesterday_unix := Time.get_unix_time_from_system() - 86400
+	var y := Time.get_date_dict_from_unix_time(int(yesterday_unix))
+	BoostSystem.login_day_key = "%04d-%02d-%02d" % [y["year"], y["month"], y["day"]]
+	BoostSystem.login_streak = 2
+	check(BoostSystem.login_available() and BoostSystem.next_login_day() == 3, "sequência continua no dia seguinte")
+	BoostSystem.claim_login()
+	check(BoostSystem.is_active("renda") and BoostSystem.login_streak == 3, "dia 3 dá bônus de renda")
+	BoostSystem.login_day_key = "2001-01-01"
+	BoostSystem.login_streak = 5
+	check(BoostSystem.next_login_day() == 1, "perder um dia reinicia a sequência")
+	BoostSystem.login_day_key = "9999-01-01"
+	check(not BoostSystem.login_available(), "relógio voltando não libera recompensa")
+	BoostSystem.login_day_key = today
+
+
+func test_snapshots() -> void:
+	print("[3.0: Cópias de segurança]")
+	fresh()
+	SaveSystem.delete_all(true)
+	EconomySystem.money = 111.0
+	SaveSystem._last_snapshot = 0.0
+	GameManager.save_game()
+	var snaps := SaveSystem.list_snapshots()
+	check(snaps.size() == 1 and near(snaps[0]["money"], 111.0), "cópia criada no salvamento")
+	EconomySystem.money = 999.0
+	GameManager.save_game()
+	check(SaveSystem.list_snapshots().size() == 1, "cópias a cada 5 minutos, não a cada salvamento")
+	GameManager.new_game()
+	check(SaveSystem.list_snapshots().size() >= 1, "novo jogo mantém as cópias")
+	var slot: int = snaps[0]["slot"]
+	check(SaveSystem.restore_snapshot(slot) and GameManager.continue_game() and near(EconomySystem.money, 111.0), "restaurar recupera o progresso")
+	SaveSystem.delete_all(true)
+	check(SaveSystem.list_snapshots().is_empty(), "apagar tudo remove as cópias")
+
+
+func test_migration_v2() -> void:
+	print("[3.0: Migração de save da 2.0]")
+	fresh()
+	var v2 := GameManager.collect_state()
+	v2.erase("boosts")
+	v2["format"] = 2
+	v2["economy"]["money"] = 4242.0
+	SaveSystem.write(v2)
+	check(GameManager.continue_game() and near(EconomySystem.money, 4242.0), "save 2.0 carrega na 3.0")
+	check(BoostSystem.active.is_empty() and BoostSystem.login_available(), "novos sistemas com valores padrão")
+	var bk := SaveSystem.OLD_FORMAT_BACKUP.replace("v1", "v2")
+	check(FileAccess.file_exists(bk), "cópia do save 2.0 antes da migração")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(bk))
+	GameManager.save_game()
+	check(int(SaveSystem.read().get("format", 0)) == 3, "regravado no formato 3")
 
 
 ## Simula um jogador jogando de forma simples para verificar o ritmo.
@@ -546,6 +669,8 @@ func _bot_spend() -> void:
 				var value := float(d.get("income", 0.0)) + float(d.get("cap", 0)) * float(d.get("tax", 0.0))
 				if d["cat"] == "res" and (need_pop or jobs_short):
 					value *= 3.0
+				if d.has("transit") and CityIndexSystem.traffic > 30.0 and BuildingSystem.count_owned(d["id"]) < ExpansionSystem.unlocked:
+					value = maxf(value, cost / 60.0)
 				if d.has("service") and happy_low and HappinessSystem.service_ratio(d["service"]) < 0.9:
 					value = maxf(value, cost / 60.0)
 				var score := value / cost

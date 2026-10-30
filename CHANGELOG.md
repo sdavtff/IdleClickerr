@@ -1,5 +1,55 @@
 # Histórico de versões
 
+## 3.0.0
+
+Evolução da 2.0 trabalhando sobre o projeto-fonte completo, sem remover sistemas existentes. Saves da 1.0 e da 2.0 são migrados automaticamente.
+
+### Melhorias implementadas
+
+**Índices urbanos (novo sistema)**
+- **Trânsito**: deslocamentos dos moradores × capacidade de transporte (ruas por região, Terminal de ônibus, Estação de metrô, Aeroporto e a pesquisa Linhas de ônibus). Congestionamento reduz a felicidade e a produtividade, e coloca mais carros, mais lentos, nas ruas.
+- **Poluição** de 0 a 100 (indústrias com filtros de pesquisa, mais parte do trânsito), substituindo o cálculo simples anterior.
+- **Produtividade** (educação e trânsito) aplicada à renda de comércios e empresas.
+- **Qualidade de vida** (nota A–E), que acelera ou freia o crescimento populacional.
+- Nova aba "Qualidade de vida" no painel da cidade, com gráficos históricos de população, felicidade e trânsito.
+
+**Bônus temporários e recompensas (novo sistema)**
+- Renda em dobro, Obras turbo, Ciência acelerada e Onda de migração, com indicadores e contagem regressiva no HUD.
+- Incentivo da prefeitura grátis a cada 3 horas, com proteção contra relógio alterado.
+- Moedas douradas (7% das moedas flutuantes) dão bônus surpresa.
+- Recompensa diária em sequência de 7 dias (dinheiro, pesquisa, bônus e uma estrela no 7º dia), que abre automaticamente uma vez por dia.
+- Bônus não multiplicam a renda offline; o tempo fora os consome.
+
+**Construções**
+- 5 novas (53 no total): Posto de saúde (saúde já na vila), Terminal de ônibus, Usina de reciclagem (renda e redução de poluição), Centro de pesquisa e Torre comercial.
+
+**Visual**
+- Sombras que acompanham o sol (longas de manhã e à tarde, curtas ao meio-dia, ausentes à noite e mais fracas na chuva).
+- Neblina ao amanhecer, moedas douradas com brilho giratório e densidade de carros ligada ao trânsito.
+- Minimapa com regiões, edifícios e área visível: toque ou arraste para navegar pela cidade.
+
+**Áudio**
+- Som ambiente da cidade (pássaros e trânsito de dia, grilos à noite) e música noturna, com transição suave pelo ciclo de dia e noite.
+- Novos sons de bônus e de recompensa diária; volume próprio para o ambiente.
+
+**Salvamento e recuperação**
+- 3 cópias de segurança rotativas (a cada 5 minutos), que podem ser restauradas em Configurações e sobrevivem a "Novo jogo".
+- Formato de save 3, com migração e cópia automática do save anterior por versão.
+- Modo de **autoteste** (`-- --selftest`) para validar builds exportados: inicialização, obra, renda, salvar/carregar, renda offline e cena do jogo, usando arquivos separados do save do jogador.
+
+### Bugs e limitações corrigidos
+- O painel de Melhorias mostrava o botão de melhorar em edifícios ainda em obra (o toque falhava com som de erro); agora mostra "Em obra" e o tempo restante.
+- A pesquisa só dobrava com eventos; agora usa todos os modificadores (inclui bônus).
+- A cópia do save antigo era sempre gravada como "v1"; agora uma cópia por versão, para não sobrescrever nem pular a cópia da 2.0.
+- "Apagar todo o progresso" e "Novo jogo" não deixavam forma de recuperar a cidade anterior; agora as cópias rotativas permanecem.
+
+### Testes realizados
+- 162 testes automatizados de mecânica e mais 1 com a simulação de 10 horas (progressão: região 4 em ~2h, região 5 em ~6h).
+- 8 testes de toques reais na interface.
+- Desempenho com a cidade cheia (80 edifícios) nas 3 qualidades gráficas.
+- Build exportado (Linux, mesmo pacote de jogo do APK) rodado sem o editor: autoteste completo com renderização real.
+- APK assinado e verificado com `apksigner` e `aapt2`.
+
 ## 2.0.0
 
 Atualização feita sobre o projeto 1.0, preservando todos os sistemas existentes e os saves dos jogadores.
