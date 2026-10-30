@@ -261,7 +261,57 @@ def icon_menu():
     save(img, "menu")
 
 
+def icon_research():
+    img, d = canvas()
+    d.rounded_rectangle(P(36, 6, 60, 16), radius=3 * S, fill=DARK)
+    d.polygon(P(38, 14, 58, 14, 58, 38, 86, 82, 80, 92, 16, 92, 10, 82, 38, 38), fill=DARK)
+    d.polygon(P(43, 18, 53, 18, 53, 40, 80, 82, 77, 87, 19, 87, 16, 82, 43, 40), fill=(235, 245, 255, 255))
+    d.polygon(P(30, 62, 66, 62, 80, 82, 77, 87, 19, 87, 16, 82), fill=(120, 90, 230, 255))
+    for cx, cy, r in ((40, 74, 5), (56, 70, 4), (48, 80, 3)):
+        d.ellipse(P(cx - r, cy - r, cx + r, cy + r), fill=(220, 210, 255, 255))
+    save(img, "research")
+
+
+def icon_event():
+    img, d = canvas()
+    d.rounded_rectangle(P(8, 14, 88, 90), radius=12 * S, fill=DARK)
+    d.rounded_rectangle(P(13, 19, 83, 85), radius=9 * S, fill=(255, 255, 255, 255))
+    d.rectangle(P(13, 19, 83, 38), fill=(235, 90, 80, 255))
+    for x in (28, 68):
+        d.rounded_rectangle(P(x - 4, 6, x + 4, 26), radius=3 * S, fill=DARK)
+    d.polygon(P(*star_points(48, 62, 18, 8)), fill=(255, 196, 40, 255))
+    save(img, "event")
+
+
+def icon_bank():
+    img, d = canvas()
+    d.polygon(P(48, 6, 92, 30, 4, 30), fill=DARK)
+    d.polygon(P(48, 12, 82, 27, 14, 27), fill=(255, 205, 80, 255))
+    d.rectangle(P(8, 30, 88, 38), fill=DARK)
+    for x in (16, 34, 52, 70):
+        d.rectangle(P(x, 38, x + 10, 76), fill=DARK)
+        d.rectangle(P(x + 2, 38, x + 8, 76), fill=(240, 240, 245, 255))
+    d.rounded_rectangle(P(4, 76, 92, 90), radius=4 * S, fill=DARK)
+    d.rounded_rectangle(P(8, 79, 88, 87), radius=3 * S, fill=(60, 190, 110, 255))
+    f = font(14)
+    d.text((48 * S, 21 * S), "R$", font=f, fill=DARK, anchor="mm")
+    save(img, "bank")
+
+
+def icon_challenge():
+    img, d = canvas()
+    for r, c in ((44, DARK), (40, (235, 90, 80, 255)), (30, (255, 255, 255, 255)), (20, (235, 90, 80, 255)), (10, (255, 255, 255, 255))):
+        d.ellipse(P(48 - r, 50 - r, 48 + r, 50 + r), fill=c)
+    d.line(P(48, 50, 84, 12), fill=DARK, width=6 * S)
+    d.polygon(P(84, 4, 92, 12, 84, 18, 78, 12), fill=(60, 190, 110, 255))
+    save(img, "challenge")
+
+
 def make_icons():
+    icon_research()
+    icon_event()
+    icon_bank()
+    icon_challenge()
     os.makedirs(ICONS, exist_ok=True)
     icon_coin()
     icon_people()
@@ -424,6 +474,16 @@ def make_audio():
     write_wav("unlock", np.concatenate([fan, final]))
     write_wav("mission", seq([tone(784, 0.1, "tri", 0.4), tone(988, 0.1, "tri", 0.4), mix(tone(1175, 0.4, "tri", 0.4), tone(1568, 0.4, "sine", 0.15))]))
     write_wav("error", seq([tone(196, 0.1, "square", 0.3), tone(147, 0.18, "square", 0.3)]))
+    # Novos na 2.0
+    write_wav("event", seq([tone(659, 0.12, "square", 0.22), tone(784, 0.12, "square", 0.22), tone(988, 0.12, "square", 0.22), mix(tone(1319, 0.5, "tri", 0.3), tone(659, 0.5, "tri", 0.2))]))
+    write_wav("research", seq([mix(tone(1568, 0.08, "sine", 0.25), tone(2093, 0.08, "sine", 0.1)), mix(tone(1760, 0.08, "sine", 0.25)), mix(tone(2093, 0.4, "sine", 0.3), tone(3136, 0.3, "sine", 0.08))]))
+    write_wav("cash", mix(np.concatenate([tone(0, 0.05, "noise", 0.3), np.zeros(int(RATE * 0.05))]), np.concatenate([np.zeros(int(RATE * 0.06)), tone(2637, 0.35, "sine", 0.3)]), np.concatenate([np.zeros(int(RATE * 0.06)), tone(3520, 0.3, "sine", 0.15)])))
+    boom = tone(0, 0.6, "noise", 0.5) * np.exp(-np.arange(int(RATE * 0.6)) / RATE * 6)
+    write_wav("firework", np.concatenate([tone(0, 0.25, "noise", 0.08) * np.linspace(0, 1, int(RATE * 0.25)), boom]))
+    th = np.random.uniform(-1, 1, int(RATE * 1.6))
+    th = np.convolve(th, np.ones(30) / 30, mode="same") * np.exp(-np.arange(th.size) / RATE * 2.2) * 1.6
+    write_wav("thunder", th)
+    write_wav("complete", seq([tone(784, 0.08, "tri", 0.35), tone(1047, 0.08, "tri", 0.35), mix(tone(1568, 0.35, "tri", 0.35), tone(784, 0.35, "sine", 0.15))]))
     write_wav("music", make_music())
 
 

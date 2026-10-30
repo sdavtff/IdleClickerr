@@ -34,7 +34,10 @@ func _draw() -> void:
 			continue
 		var s := rng.randf_range(0.8, 1.15)
 		var tone := grass.darkened(rng.randf_range(0.15, 0.3))
-		BuildingArt.tree(self, 0, bx, gy - 6, s, tone)
+		if region >= 7:
+			BuildingArt.palm(self, 0, bx, gy - 4, s)
+		else:
+			BuildingArt.tree(self, 0, bx, gy - 6, s, tone)
 	# calçada
 	draw_rect(Rect2(x0, gy, w, GameData.ROAD_Y0 - gy), Color("d9d4cb"))
 	draw_rect(Rect2(x0, gy, w, 3), Color("ece8e0"))
@@ -55,6 +58,15 @@ func _draw() -> void:
 		draw_rect(Rect2(dx, mid - 2, 38, 4), Color("f5d76e"))
 		dx += 70.0
 	draw_rect(Rect2(x0, ry0 + 6, w, 2), Color(1, 1, 1, 0.35))
+	# faixas de pedestres (mesmas posições dos semáforos)
+	for cx in [GameData.region_start_x(region), GameData.region_start_x(region) + GameData.LOTS_PER_REGION * 0.5 * GameData.LOT_W]:
+		if cx < x0 + 1.0 or cx > x1 or (region == 0 and is_equal_approx(cx, GameData.region_start_x(0))):
+			continue
+		draw_rect(Rect2(cx - 28, ry0 + 2, 56, ry1 - ry0 - 4), Color("4a4f5c"))
+		var zy := ry0 + 6.0
+		while zy < ry1 - 6:
+			draw_rect(Rect2(cx - 26, zy, 52, 6), Color(1, 1, 1, 0.85))
+			zy += 12.0
 	draw_rect(Rect2(x0, ry1 - 8, w, 2), Color(1, 1, 1, 0.35))
 	# meio-fio e calçada da frente
 	draw_rect(Rect2(x0, ry1, w, 5), Color("9e9a92"))

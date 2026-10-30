@@ -20,6 +20,7 @@ var run_bonus := 0.0
 var lifetime := {
 	"built": 0, "upgrades": 0, "max_pop": 0.0, "max_happy": 0.0, "max_regions": 1,
 	"max_level": 1, "bubbles": 0, "max_offline": 0.0, "prestiges": 0, "earned": 0.0,
+	"researched": 0, "events_done": 0, "dailies": 0, "specials": 0, "investments": 0,
 }
 var achievements: Array = []
 
@@ -90,6 +91,8 @@ func on_upgraded(levels: int) -> void:
 
 
 func on_bubble() -> void:
+	EventSystem.note("bubbles", 1)
+	ChallengeSystem.note("bubbles", 1)
 	run_bubbles += 1
 	lifetime["bubbles"] = int(lifetime["bubbles"]) + 1
 
@@ -110,6 +113,26 @@ func note_regions(n: int) -> void:
 
 func note_offline(seconds: float) -> void:
 	lifetime["max_offline"] = maxf(float(lifetime["max_offline"]), seconds)
+
+
+func note_research(count: int) -> void:
+	lifetime["researched"] = maxi(int(lifetime["researched"]), count)
+
+
+func note_event_done() -> void:
+	lifetime["events_done"] = int(lifetime["events_done"]) + 1
+
+
+func note_daily() -> void:
+	lifetime["dailies"] = int(lifetime["dailies"]) + 1
+
+
+func note_special() -> void:
+	lifetime["specials"] = int(lifetime["specials"]) + 1
+
+
+func note_investment() -> void:
+	lifetime["investments"] = int(lifetime["investments"]) + 1
 
 
 func note_prestige() -> void:
@@ -190,6 +213,10 @@ func all_done() -> bool:
 
 # --- Conquistas ----------------------------------------------------------------
 
+func achievement_reward() -> float:
+	return EconomySystem.scaled_reward(GameData.ACHIEVEMENT_REWARD_MIN, 0.03)
+
+
 func achievement_progress(a: Dictionary) -> float:
 	var key: String = a["stat"]
 	if key == "earned":
@@ -209,4 +236,5 @@ func check() -> void:
 			continue
 		if achievement_progress(a) + 0.0001 >= float(a["target"]):
 			achievements.append(a["id"])
+			EconomySystem.add_money(achievement_reward(), false, "rewards")
 			achievement_unlocked.emit(a)

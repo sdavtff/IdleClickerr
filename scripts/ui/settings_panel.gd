@@ -7,9 +7,10 @@ signal reset_requested
 
 const TOGGLES := [
 	["music", "Música"], ["sfx", "Efeitos sonoros"], ["day_night", "Ciclo de dia e noite"],
-	["weather", "Clima dinâmico (chuva)"], ["high_quality", "Mais carros e pedestres"],
-	["floating_text", "Textos de renda flutuantes"],
+	["weather", "Clima dinâmico (chuva)"], ["battery_saver", "Economia de bateria (30 FPS)"],
+	["floating_text", "Textos de renda flutuantes"], ["notifications", "Notificações na tela"],
 ]
+var _quality_btn: Button
 var _toggle_btns := {}
 ## No menu inicial, mostra apenas as opções (sem salvar/estatísticas).
 var in_menu := false
@@ -39,6 +40,35 @@ func rebuild() -> void:
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_child(b)
 		_toggle_btns[key] = [b, t[1]]
+	_quality_btn = UI.button("", UI.C_BLUE, _cycle_quality, 20)
+	_quality_btn.custom_minimum_size = Vector2(0, 62)
+	_quality_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(_quality_btn)
+	for vol in [["music_volume", "Volume da música"], ["sfx_volume", "Volume dos efeitos"]]:
+		var key: String = vol[0]
+		var row := UI.hbox(12)
+		list.content.add_child(row)
+		var l := UI.label(vol[1], 20, UI.C_TEXT, true)
+		l.custom_minimum_size = Vector2(240, 0)
+		row.add_child(l)
+		var sl := HSlider.new()
+		sl.min_value = 0.0
+		sl.max_value = 1.0
+		sl.step = 0.05
+		sl.value = float(SettingsManager.get(key))
+		sl.custom_minimum_size = Vector2(0, 48)
+		sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		sl.add_theme_icon_override("grabber", UI.icon("coin"))
+		sl.add_theme_icon_override("grabber_highlight", UI.icon("coin"))
+		var track := UI.style(Color("c9cfdb"), 8)
+		track.content_margin_top = 8
+		track.content_margin_bottom = 8
+		sl.add_theme_stylebox_override("slider", track)
+		sl.add_theme_stylebox_override("grabber_area", UI.style(UI.C_GREEN, 8))
+		sl.add_theme_stylebox_override("grabber_area_highlight", UI.style(UI.C_GREEN, 8))
+		sl.value_changed.connect(func(v): SettingsManager.set_value(key, v))
+		row.add_child(sl)
 	if in_menu:
 		refresh()
 		return
@@ -78,6 +108,11 @@ func rebuild() -> void:
 	refresh()
 
 
+func _cycle_quality() -> void:
+	SettingsManager.set_value("quality", (SettingsManager.quality + 1) % 3)
+	refresh()
+
+
 func _toggle(key: String) -> void:
 	SettingsManager.set_value(key, not bool(SettingsManager.get(key)))
 	refresh()
@@ -99,6 +134,8 @@ func refresh() -> void:
 		var on := bool(SettingsManager.get(key))
 		b.text = "%s: %s" % [_toggle_btns[key][1], "LIGADO" if on else "DESLIGADO"]
 		UI.color_button(b, UI.C_GREEN if on else UI.C_GREY)
+	if _quality_btn:
+		_quality_btn.text = "Qualidade gráfica: %s" % SettingsManager.QUALITY_NAMES[SettingsManager.quality].to_upper()
 	if _save_l != null and SaveSystem.last_save_time > 0:
 		var ago := Time.get_unix_time_from_system() - SaveSystem.last_save_time
 		_save_l.text = "Salvamento automático a cada 15 segundos. Último: há %s." % Fmt.short_duration(ago)

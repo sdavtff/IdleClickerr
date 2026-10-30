@@ -33,33 +33,52 @@ func mark_active() -> void:
 	last_active_time = Time.get_unix_time_from_system()
 
 
-## Calcula (sem aplicar) a renda offline para `raw_seconds` de ausência.
+## Calcula a renda offline para `raw_seconds` de ausência. Também avança obras,
+## pesquisa, investimentos e eventos (efeitos aplicados; o dinheiro fica pendente).
 func compute(raw_seconds: float) -> Dictionary:
 	var secs := clampf(raw_seconds, 0.0, GameData.OFFLINE_MAX_SECONDS)
 	var report := {"raw_seconds": maxf(raw_seconds, 0.0), "seconds": secs, "money": 0.0,
-		"capped": raw_seconds > GameData.OFFLINE_MAX_SECONDS, "pop_before": PopulationSystem.population, "pop_after": PopulationSystem.population}
+		"capped": raw_seconds > GameData.OFFLINE_MAX_SECONDS, "pop_before": PopulationSystem.population,
+		"pop_after": PopulationSystem.population, "buildings_done": 0, "research_done": [], "investments": 0,
+		"by_cat": {}}
 	if secs <= 0.0:
 		return report
 	HappinessSystem.recompute()
 	PopulationSystem.recompute()
 	EconomySystem.recompute()
 	var net_before := EconomySystem.net_ps
+	var cat_before: Dictionary = EconomySystem.income_by_cat.duplicate()
+	report["buildings_done"] = BuildingSystem.advance_construction(secs).size()
+	for r in ResearchSystem.simulate_offline(secs):
+		report["research_done"].append(GameData.research_def(r)["name"])
+	EventSystem.skip(secs)
 	PopulationSystem.simulate_offline(secs)
 	HappinessSystem.recompute()
 	HappinessSystem.value = HappinessSystem.target
 	EconomySystem.recompute()
 	var net_after := EconomySystem.net_ps
+	report["investments"] = EconomySystem.simulate_offline(secs).size()
 	report["money"] = maxf(0.0, (net_before + net_after) * 0.5 * secs)
+	var by_cat := {}
+	for k in EconomySystem.income_by_cat.keys():
+		by_cat[k] = (float(cat_before.get(k, 0.0)) + float(EconomySystem.income_by_cat[k])) * 0.5 * secs
+	report["by_cat"] = by_cat
 	report["pop_after"] = PopulationSystem.population
 	return report
 
 
-## Chamado ao abrir o jogo ou ao voltar do segundo plano.
+## Chamado ao abrir o jogo ou ao voltar do segundo plano. Protegido contra
+## relógio voltando no tempo (não gera nada) e contra coleta duplicada
+## (o horário de referência é atualizado antes de gerar a recompensa).
 func process_absence(now: float) -> Dictionary:
 	if last_active_time <= 0.0:
 		mark_active()
 		return {}
 	var raw := now - last_active_time
+	if raw < 0.0:
+		# Relógio do aparelho voltou: reinicia a referência sem recompensa.
+		mark_active()
+		return {"clock_back": true}
 	mark_active()
 	if raw < 1.0:
 		return {}

@@ -11,6 +11,11 @@ var _level_l: Label
 var _delta_l: Label
 var _ms_l: Label
 var _btns: Array = []
+var _build_card: PanelContainer
+var _build_l: Label
+var _build_bar: ProgressBar
+var _accel: Button
+var _up_card: PanelContainer
 
 
 func _init() -> void:
@@ -53,7 +58,19 @@ func rebuild() -> void:
 	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_stats.custom_minimum_size = Vector2(420, 0)
 	v.add_child(_stats)
+	_build_card = UI.card(Color("fff3e0"))
+	list.content.add_child(_build_card)
+	var bv := UI.vbox(8)
+	_build_card.add_child(bv)
+	_build_l = UI.label("", 20, UI.C_TEXT, true)
+	bv.add_child(_build_l)
+	_build_bar = UI.progress(0, 1, UI.C_ORANGE)
+	bv.add_child(_build_bar)
+	_accel = UI.button("", UI.C_ORANGE, _accelerate, 20)
+	_accel.custom_minimum_size = Vector2(0, 60)
+	bv.add_child(_accel)
 	var up := UI.card(Color("eef7ee"))
+	_up_card = up
 	list.content.add_child(up)
 	var uv := UI.vbox(8)
 	up.add_child(uv)
@@ -76,6 +93,14 @@ func rebuild() -> void:
 	var demo := UI.button("Demolir (+%s)" % Fmt.money(BuildingSystem.demolish_refund(b)), UI.C_RED, func(): demolish_requested.emit(uid), 18, true, "demolish")
 	demo.custom_minimum_size = Vector2(0, 52)
 	bottom.add_child(demo)
+	refresh()
+
+
+func _accelerate() -> void:
+	if BuildingSystem.accelerate(uid):
+		AudioManager.play("cash")
+	else:
+		AudioManager.play("error")
 	refresh()
 
 
@@ -105,6 +130,18 @@ func refresh() -> void:
 		return
 	var def := GameData.get_def(b["id"])
 	var lv := int(b["level"])
+	var building := not BuildingSystem.is_complete(b)
+	_build_card.visible = building
+	_up_card.visible = not building
+	if building:
+		_level_l.text = "Em construção"
+		_build_l.text = "Obra em andamento: faltam %s" % Fmt.short_duration(ceilf(float(b["build_left"])))
+		_build_bar.value = BuildingSystem.build_progress(b)
+		var ac := BuildingSystem.accelerate_cost(b)
+		_accel.text = "Concluir agora  %s" % Fmt.money(ac)
+		_accel.disabled = not EconomySystem.can_afford(ac)
+		_stats.text = "\n".join(Describe.stats_lines(def, lv))
+		return
 	_level_l.text = "Nível %d" % lv
 	if _thumb.level != lv:
 		_thumb.level = lv

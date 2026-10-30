@@ -13,6 +13,9 @@ var expansion_panel: ExpansionPanel
 var prestige_panel: PrestigePanel
 var settings_panel: SettingsPanel
 var stats_panel: StatsPanel
+var finance_panel: FinancePanel
+var research_panel: ResearchPanel
+var events_panel: EventsPanel
 var confirm: ConfirmDialog
 var offline: OfflinePopup
 var _refresh_acc := 0.0
@@ -41,6 +44,9 @@ func _ready() -> void:
 	prestige_panel = _panel(PrestigePanel.new())
 	settings_panel = _panel(SettingsPanel.new())
 	stats_panel = _panel(StatsPanel.new())
+	finance_panel = _panel(FinancePanel.new())
+	research_panel = _panel(ResearchPanel.new())
+	events_panel = _panel(EventsPanel.new())
 	offline = _panel(OfflinePopup.new())
 	confirm = _panel(ConfirmDialog.new())
 
@@ -50,6 +56,9 @@ func _ready() -> void:
 	hud.open_expansion.connect(func(): expansion_panel.open_panel())
 	hud.open_prestige.connect(func(): prestige_panel.open_panel())
 	hud.open_settings.connect(func(): settings_panel.open_panel())
+	hud.open_finance.connect(func(): finance_panel.open_panel())
+	hud.open_research.connect(func(): research_panel.open_panel())
+	hud.open_events.connect(func(): events_panel.open_panel())
 	hud.open_stats.connect(func(tab):
 		stats_panel.current_tab = tab
 		stats_panel.open_panel()
@@ -68,7 +77,12 @@ func _ready() -> void:
 	IdleSystem.offline_reward_ready.connect(func(report): offline.show_report(report))
 	offline.collected.connect(func(amount):
 		if amount > 0.0:
-			city.effects.float_text(city.camera.position + Vector2(city.view_size().x * 0.5, 300), "+" + Fmt.money(amount), Color("ffe14d"), 40))
+			city.effects.float_text(city.camera.position + Vector2(city.view_size().x * 0.5, 300), "+" + Fmt.money(amount), Color("ffe14d"), 40)
+			city.coin_burst_screen(Vector2(city.view_size().x * 0.5, 320), 24))
+	ExpansionSystem.region_unlocked.connect(func(_i):
+		GameManager.toast.emit("Recompensa de expansão: +%s e pontos de pesquisa!" % Fmt.money(ExpansionSystem.last_reward), "unlock"))
+	MissionSystem.mission_claimed.connect(func(_m): city.coin_burst_screen(Vector2(city.view_size().x * 0.5, 300), 12))
+	ChallengeSystem.challenge_completed.connect(func(_c, _w): city.coin_burst_screen(Vector2(city.view_size().x * 0.5, 300), 16))
 	BuildingSystem.building_built.connect(func(_b): _refresh_structure())
 	BuildingSystem.building_removed.connect(func(_u): _refresh_structure())
 	BuildingSystem.buildings_reset.connect(_refresh_structure)
@@ -104,7 +118,7 @@ func _refresh_structure() -> void:
 
 func _on_built_from_menu(b: Dictionary) -> void:
 	var def := GameData.get_def(b["id"])
-	GameManager.toast.emit("Nova construção: %s (terreno %d)" % [def["name"], int(b["lot"]) + 1], "info")
+	GameManager.toast.emit("Obra iniciada: %s (terreno %d) — pronta em %s" % [def["name"], int(b["lot"]) + 1, Fmt.short_duration(float(b.get("build_left", 0.0)))], "info")
 	if BuildingSystem.free_lot_count() <= 0:
 		build_panel.close_panel()
 

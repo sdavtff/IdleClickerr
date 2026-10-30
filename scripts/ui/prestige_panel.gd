@@ -60,10 +60,10 @@ func _build_main() -> void:
 	list.content.add_child(cols)
 	cols.add_child(_info_card("SERÁ REINICIADO", Color("fdecea"), UI.C_RED, [
 		"Dinheiro atual", "Todos os edifícios e seus níveis", "Regiões desbloqueadas",
-		"População e felicidade", "Missões e bônus de missões"]))
+		"População e felicidade", "Missões e bônus de missões", "Pesquisas, banco e eventos"]))
 	cols.add_child(_info_card("SERÁ MANTIDO", Color("e8f6ee"), UI.C_GREEN, [
 		"Estrelas de prestígio e seus bônus", "Melhorias da loja de legado",
-		"Conquistas (+2% renda cada)", "Estatísticas gerais", "Configurações"]))
+		"Conquistas (+2% renda cada)", "Desafios diários e semanais", "Estatísticas gerais"]))
 	_do_btn = UI.button("RENASCER A CIDADE", UI.C_ORANGE, func(): prestige_requested.emit(), 26, true, "star")
 	_do_btn.custom_minimum_size = Vector2(0, 74)
 	list.content.add_child(_do_btn)
@@ -119,7 +119,8 @@ func refresh() -> void:
 		_stars_l.text = "Estrelas: %d disponíveis  |  %d conquistadas  |  Renda x%s" % [PrestigeSystem.stars, PrestigeSystem.stars_total, Fmt.num(mult)]
 	if current_tab == 0 and _gain_l:
 		var gain := PrestigeSystem.stars_on_reset()
-		_gain_l.text = "Ao renascer agora você ganha: %d estrela%s" % [gain, "" if gain == 1 else "s"]
+		var after := (1.0 + GameData.STAR_INCOME_BONUS * (PrestigeSystem.stars_total + gain)) * (1.0 + 0.1 * PrestigeSystem.level("marketing"))
+		_gain_l.text = "Ao renascer agora você ganha: %d estrela%s\nMultiplicador de renda: x%s  »  x%s" % [gain, "" if gain == 1 else "s", Fmt.num(mult), Fmt.num(after)]
 		var reqs := []
 		if ExpansionSystem.unlocked < GameData.PRESTIGE_MIN_REGIONS:
 			reqs.append("Desbloqueie o %s (região %d)." % [GameData.REGIONS[GameData.PRESTIGE_MIN_REGIONS - 1]["name"], GameData.PRESTIGE_MIN_REGIONS])

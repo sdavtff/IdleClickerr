@@ -30,6 +30,30 @@ func sparkle(pos: Vector2, width: float, height: float) -> void:
 			"c": [Color("fff176"), Color("ffffff"), Color("80deea")][randi() % 3], "life": 0.0, "max": randf_range(0.6, 1.1), "g": -10.0, "star": true})
 
 
+## Explosão de fogos de artifício (com atraso opcional, em segundos).
+func firework(pos: Vector2, delay := 0.0) -> void:
+	var col: Color = [Color("ff5252"), Color("ffd740"), Color("69f0ae"), Color("40c4ff"), Color("e040fb")][randi() % 5]
+	for i in 26:
+		var a := i * TAU / 26.0
+		var sp := randf_range(150, 220)
+		particles.append({"p": pos, "v": Vector2(cos(a), sin(a)) * sp, "r": randf_range(3, 5), "c": col,
+			"life": -delay, "max": randf_range(0.9, 1.3), "g": 90.0, "star": true})
+
+
+## Moedas saltando (animação de dinheiro).
+func coin_burst(pos: Vector2, count := 14) -> void:
+	for i in count:
+		particles.append({"p": pos, "v": Vector2(randf_range(-160, 160), randf_range(-320, -160)), "r": 9.0,
+			"c": Color("ffd23f"), "life": 0.0, "max": randf_range(0.9, 1.3), "g": 520.0, "coin": true})
+
+
+func confetti(pos: Vector2, count := 6) -> void:
+	for i in count:
+		particles.append({"p": pos + Vector2(randf_range(-80, 80), 0), "v": Vector2(randf_range(-30, 30), randf_range(40, 90)),
+			"r": randf_range(3, 5), "c": [Color("ff5252"), Color("ffd740"), Color("69f0ae"), Color("40c4ff"), Color("e040fb")][randi() % 5],
+			"life": 0.0, "max": randf_range(2.5, 3.5), "g": 8.0, "confetti": true})
+
+
 func add_bubble(pos: Vector2, value: float) -> void:
 	bubbles.append({"p": pos, "v": value, "life": 0.0, "max": 14.0, "seed": randf() * TAU})
 
@@ -66,6 +90,8 @@ func _process(delta: float) -> void:
 	texts = texts.filter(func(t): return t["life"] < t["max"])
 	for p in particles:
 		p["life"] += delta
+		if p["life"] < 0.0:
+			continue
 		p["v"] = p["v"] + Vector2(0, p["g"] * delta)
 		p["p"] = p["p"] + p["v"] * delta
 	particles = particles.filter(func(p): return p["life"] < p["max"])
@@ -80,10 +106,20 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var f := BuildingArt.font()
 	for p in particles:
+		if p["life"] < 0.0:
+			continue
 		var k: float = p["life"] / p["max"]
 		var c: Color = p["c"]
 		c.a *= 1.0 - k
-		if p.get("star", false):
+		if p.get("coin", false):
+			var pos: Vector2 = p["p"]
+			draw_circle(pos, 10, Color(BuildingArt.OUT, c.a))
+			draw_circle(pos, 8, c)
+			draw_circle(pos + Vector2(-2, -2), 3, Color(1, 1, 0.8, c.a))
+		elif p.get("confetti", false):
+			var pos2: Vector2 = p["p"]
+			draw_rect(Rect2(pos2 + Vector2(sin(p["life"] * 9.0) * 3.0, 0), Vector2(p["r"], p["r"] * 0.6)), c)
+		elif p.get("star", false):
 			var r: float = p["r"] * (1.0 - k * 0.5)
 			draw_line(p["p"] - Vector2(r, 0), p["p"] + Vector2(r, 0), c, 2.0)
 			draw_line(p["p"] - Vector2(0, r), p["p"] + Vector2(0, r), c, 2.0)

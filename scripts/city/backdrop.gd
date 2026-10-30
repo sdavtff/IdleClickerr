@@ -68,6 +68,10 @@ func _generate() -> void:
 				s["type"] = "tower"
 				s["w"] = rng.randf_range(45, 90)
 				s["h"] = rng.randf_range(200, 330)
+			"coast":
+				s["type"] = "palm" if rng.randf() < 0.55 else "boat"
+				s["w"] = rng.randf_range(40, 70)
+				s["h"] = rng.randf_range(50, 90)
 			_:
 				s["type"] = "future"
 				s["w"] = rng.randf_range(50, 90)
@@ -108,6 +112,9 @@ func _draw_far() -> void:
 func _draw_mid() -> void:
 	var base := 505.0
 	var col := Color(0.52, 0.64, 0.82)
+	if not lights_mode and GameData.REGIONS[clampi(region, 0, GameData.region_count() - 1)]["backdrop"] == "coast":
+		draw_rect(Rect2(x_from, base - 40, x_to - x_from, 50), Color(0.38, 0.66, 0.88))
+		draw_rect(Rect2(x_from, base - 40, x_to - x_from, 3), Color(0.8, 0.9, 1.0))
 	var win := Color(0.68, 0.78, 0.92)
 	for s in shapes:
 		var x: float = s["x"]
@@ -116,6 +123,18 @@ func _draw_mid() -> void:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = s["seed"]
 		match s["type"]:
+			"palm":
+				if not lights_mode:
+					draw_line(Vector2(x + w * 0.5, base), Vector2(x + w * 0.6, base - h), col.darkened(0.15), 4.0)
+					for a in [-2.6, -1.8, -1.0, -0.3]:
+						draw_line(Vector2(x + w * 0.6, base - h), Vector2(x + w * 0.6, base - h) + Vector2(cos(a), sin(a) + 0.5) * 24.0, Color(0.42, 0.62, 0.58), 4.0)
+			"boat":
+				if not lights_mode:
+					draw_rect(Rect2(x - 20, base - 8, w + 40, 10), Color(0.45, 0.66, 0.86))
+					draw_colored_polygon(PackedVector2Array([Vector2(x, base - 12), Vector2(x + w, base - 12), Vector2(x + w * 0.85, base - 4), Vector2(x + w * 0.15, base - 4)]), Color(0.92, 0.94, 0.98))
+					draw_colored_polygon(PackedVector2Array([Vector2(x + w * 0.5, base - 12), Vector2(x + w * 0.5, base - h), Vector2(x + w * 0.9, base - 14)]), Color(0.96, 0.96, 1.0))
+				else:
+					draw_circle(Vector2(x + w * 0.5, base - h), 3, Color(1, 0.9, 0.6, 0.9))
 			"tree":
 				if not lights_mode:
 					draw_rect(Rect2(x + w * 0.45, base - h * 0.4, w * 0.1, h * 0.4), col.darkened(0.1))

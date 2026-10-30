@@ -11,6 +11,7 @@ var _rng := RandomNumberGenerator.new()
 var _confirm: ConfirmDialog
 var _settings: SettingsPanel
 var _credits: ModalPanel
+var _news: ModalPanel
 var _continue_btn: Button
 var _buttons: VBoxContainer
 
@@ -76,7 +77,7 @@ func _build_ui() -> void:
 	var sub := UI.outlined(UI.label("Transforme uma pequena vila em uma megacidade!", 24, Color.WHITE, true, HORIZONTAL_ALIGNMENT_CENTER), 6)
 	v.add_child(sub)
 	_buttons = UI.vbox(12)
-	_buttons.custom_minimum_size = Vector2(420, 0)
+	_buttons.custom_minimum_size = Vector2(640, 0)
 	_buttons.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(_buttons)
 	_continue_btn = _menu_btn("Continuar", UI.C_GREEN, _continue, "home")
@@ -91,6 +92,10 @@ func _build_ui() -> void:
 	c.custom_minimum_size = Vector2(0, 60)
 	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(c)
+	var nw := UI.button("Novidades 2.0", Color("e8590c"), func(): _news.open_panel(), 20, false, "event")
+	nw.custom_minimum_size = Vector2(0, 60)
+	nw.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(nw)
 	var version := UI.outlined(UI.label("v" + str(ProjectSettings.get_setting("application/config/version", "1.0")), 16, Color.WHITE), 4)
 	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	version.offset_left = -110
@@ -108,6 +113,12 @@ func _build_ui() -> void:
 	add_child(_settings)
 	_credits = _make_credits()
 	add_child(_credits)
+	_news = ModalPanel.new()
+	_news.title = "Novidades da versão 2.0"
+	_news.icon_name = "event"
+	_news.desired_size = Vector2(980, 640)
+	_news.ready.connect(_fill_news.bind(_news))
+	add_child(_news)
 	# animação de entrada
 	logo.pivot_offset = Vector2(360, 115)
 	logo.scale = Vector2(0.3, 0.3)
@@ -137,6 +148,30 @@ func _make_credits() -> ModalPanel:
 	return p
 
 
+func _fill_news(p: ModalPanel) -> void:
+	for line in [
+		["Construções", "11 novas, incluindo a categoria Especiais: Aeroporto, Porto, Monumento, Torre Icônica e Complexo financeiro. Agora toda obra leva um tempo (pode ser acelerada)."],
+		["Nova região", "Orla Dourada: resorts, marina e farol à beira-mar."],
+		["Finanças", "Impostos ajustáveis, receitas por categoria, banco com investimentos e empréstimos, relatório e histórico."],
+		["Pesquisas", "Árvore com 20 tecnologias em 6 ramos que liberam construções e dão bônus."],
+		["Eventos", "Festival, Boom imobiliário, Crise econômica, Turismo, Tempestade e mais, com objetivos e recompensas."],
+		["Desafios", "3 desafios diários e 3 metas semanais (que valem estrelas de prestígio)."],
+		["Cidade viva", "Semáforos e faixas de pedestres, sombras, palmeiras, fogos ao expandir, confete e raios."],
+		["Conquistas", "35 conquistas, agora com recompensa em dinheiro além de +2% de renda."],
+		["Configurações", "Qualidade gráfica (3 níveis), volumes separados, economia de bateria e notificações."],
+		["Salvamento", "Saves da 1.0 são migrados automaticamente, com cópia de segurança."],
+	]:
+		var c := UI.card()
+		p.list.content.add_child(c)
+		var v := UI.vbox(2)
+		c.add_child(v)
+		v.add_child(UI.label(line[0], 21, UI.C_TEXT, true))
+		var d := UI.label(line[1], 17, UI.C_MUTED)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(800, 0)
+		v.add_child(d)
+
+
 func _fill_credits(p: ModalPanel) -> void:
 	for line in [
 		["Idle City", 30, true],
@@ -147,7 +182,7 @@ func _fill_credits(p: ModalPanel) -> void:
 		["ícones, efeitos sonoros e música gerados proceduralmente.", 18, false],
 		["", 10, false],
 		["Tecnologia", 22, true],
-		["Godot Engine 4 (MIT) — godotengine.org", 18, false],
+		["Godot Engine 4.3 (MIT) — godotengine.org", 18, false],
 		["Fonte Fredoka — The Fredoka Project Authors (SIL Open Font License 1.1)", 18, false],
 		["", 10, false],
 		["Obrigado por jogar!", 24, true],

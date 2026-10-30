@@ -5,6 +5,7 @@ signal region_unlocked(index: int)
 
 ## Quantidade de regiões desbloqueadas (a Vila inicial sempre conta).
 var unlocked := 1
+var last_reward := 0.0
 
 
 func reset(start_regions: int = 1) -> void:
@@ -48,9 +49,13 @@ func can_unlock(index: int) -> bool:
 func unlock(index: int) -> bool:
 	if not can_unlock(index):
 		return false
-	if not EconomySystem.spend(unlock_cost(index)):
+	if not EconomySystem.spend(unlock_cost(index), "expansion"):
 		return false
 	unlocked = index + 1
+	# Recompensa de expansão: minutos de renda + pontos de pesquisa.
+	last_reward = EconomySystem.scaled_reward(GameData.REGION_REWARD_MINUTES, 0.15, 1000.0)
+	EconomySystem.add_money(last_reward, false, "rewards")
+	ResearchSystem.points += float(GameData.REGION_REWARD_RP[clampi(index, 0, GameData.REGION_REWARD_RP.size() - 1)])
 	MissionSystem.note_regions(unlocked)
 	region_unlocked.emit(index)
 	return true

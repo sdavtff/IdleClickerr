@@ -27,6 +27,9 @@ const HEIGHTS := {
 	"complexo_hospitalar": [372, 14], "parque": [118, 0], "academia": [160, 0],
 	"cinema": [186, 0], "centro_entretenimento": [212, 0], "estadio": [205, 0],
 	"parque_diversoes": [262, 0],
+	"mercado": [132, 0], "praca": [124, 0], "deposito": [142, 0], "monumento": [236, 0],
+	"estacao_metro": [150, 0], "porto": [236, 0], "complexo_financeiro": [380, 14],
+	"aeroporto": [246, 0], "torre_iconica": [440, 0], "resort": [262, 0], "marina": [236, 0],
 }
 
 static var _font: Font
@@ -134,6 +137,28 @@ static func draw(ci: CanvasItem, id: String, level: int, mode: int) -> void:
 			_b_estadio(ci, mode, t, h, w)
 		"parque_diversoes":
 			_b_parque_diversoes(ci, mode, t, h, w)
+		"mercado":
+			_b_mercado(ci, mode, t, h, w)
+		"praca":
+			_b_praca(ci, mode, t, h, w)
+		"deposito":
+			_b_deposito(ci, mode, t, h, w)
+		"monumento":
+			_b_monumento(ci, mode, t, h, w)
+		"estacao_metro":
+			_b_estacao_metro(ci, mode, t, h, w)
+		"porto":
+			_b_porto(ci, mode, t, h, w)
+		"complexo_financeiro":
+			_b_complexo_financeiro(ci, mode, t, h, w)
+		"aeroporto":
+			_b_aeroporto(ci, mode, t, h, w)
+		"torre_iconica":
+			_b_torre_iconica(ci, mode, t, h, w)
+		"resort":
+			_b_resort(ci, mode, t, h, w)
+		"marina":
+			_b_marina(ci, mode, t, h, w)
 		_:
 			_tower(ci, mode, -w * 0.5, -h, w, h, Color("c0c8d8"), 4, id.hash())
 	_tier_decor(ci, mode, t, id, h, w)
@@ -339,7 +364,9 @@ const ROOFS := {
 	"hospital": [0, 20, 184], "centro_medico": [-21, 14, 130], "complexo_hospitalar": [36, -34, 0],
 	"delegacia": [0, 26, 164], "bombeiros": [75, 0, 42], "central_seguranca": [0, 40, 172],
 	"prefeitura": [0, 22, 0], "academia": [0, 16, 164], "cinema": [0, 36, 172],
-	"centro_entretenimento": [0, 0, 120],
+	"centro_entretenimento": [0, 0, 120], "mercado": [0, 6, 150], "deposito": [0, 26, 150],
+	"estacao_metro": [30, 40, 110], "complexo_financeiro": [-30, 0, 70], "aeroporto": [-40, 120, 140],
+	"resort": [0, 30, 180],
 }
 
 
@@ -1142,3 +1169,295 @@ static func _b_parque_diversoes(ci: CanvasItem, m: int, t: int, h: float, w: flo
 	if m == 1:
 		ci.draw_circle(Vector2(82, -96), 12, Color(1, 0.9, 0.5, 0.5))
 	signboard(ci, m, -104, -26, 84, 18, Color("8e24aa"), Color("ffeb3b"), "DIVERSÕES", 12)
+
+
+# =============================================================================
+# Novos na 2.0
+# =============================================================================
+
+static func palm(ci: CanvasItem, m: int, x: float, y: float, s := 1.0) -> void:
+	if m != 0:
+		return
+	var top := Vector2(x + 10 * s, y - 70 * s)
+	ci.draw_polyline(PackedVector2Array([Vector2(x, y), Vector2(x + 4 * s, y - 35 * s), top]), OUT, 8 * s)
+	ci.draw_polyline(PackedVector2Array([Vector2(x, y), Vector2(x + 4 * s, y - 35 * s), top]), Color("a1785a"), 5 * s)
+	for a in [-2.6, -2.0, -1.2, -0.5, 0.1]:
+		var tip := top + Vector2(cos(a), sin(a) + 0.6) * 34 * s
+		var mid := top + Vector2(cos(a), sin(a)) * 18 * s
+		ci.draw_polyline(PackedVector2Array([top, mid, tip]), OUT, 9 * s)
+		ci.draw_polyline(PackedVector2Array([top, mid, tip]), Color("43a047"), 6 * s)
+	ci.draw_circle(top + Vector2(0, 3), 4 * s, Color("6d4c41"))
+
+
+static func _b_mercado(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	box(ci, m, -74, -h + 14, 148, h - 14, Color("fff3d6"))
+	box(ci, m, -78, -h + 6, 156, 10, Color("2e7d32"), false)
+	signboard(ci, m, -54, -h + 22, 108, 24, Color("2e7d32"), Color("fff3d6"), "MERCADO", 17)
+	awning(ci, m, -72, -78, 144, 16, Color("ff8f00"), Color("fff3d6"))
+	window(ci, m, -64, -58, 70, 40, 60)
+	door(ci, m, 18, -54, 30, 54, Color("6d4c41"))
+	if m == 0:
+		var fruit := [Color("e53935"), Color("fb8c00"), Color("fdd835"), Color("43a047"), Color("8e24aa")]
+		for i in 3:
+			var cx := -60 + i * 22.0
+			ci.draw_rect(Rect2(cx - 2, -16, 20, 14), OUT)
+			ci.draw_rect(Rect2(cx, -14, 16, 12), Color("a1785a"))
+			for j in 3:
+				ci.draw_circle(Vector2(cx + 3 + j * 5, -17), 3.5, fruit[(i + j) % fruit.size()])
+
+
+static func _b_praca(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	if m == 0:
+		ci.draw_rect(Rect2(-100, -10, 200, 10), Color("8bc34a"))
+		ci.draw_rect(Rect2(-50, -8, 100, 8), Color("e0d6c8"))
+	tree(ci, m, -84, -4, 0.95, Color("2e7d32"))
+	tree(ci, m, 86, -4, 0.85, Color("43a047"))
+	# coreto
+	for x in [-30, -10, 10, 30]:
+		box(ci, m, x - 3, -72, 6, 64, WHITE, false)
+	box(ci, m, -40, -12, 80, 8, Color("bcaaa4"), false)
+	poly(ci, m, [-46, -72, -28, -h + 12, 28, -h + 12, 46, -72], Color("c62828"))
+	poly(ci, m, [-28, -h + 12, 0, -h, 28, -h + 12], Color("b71c1c"))
+	if m == 0:
+		ci.draw_rect(Rect2(-36, -40, 72, 3), WHITE)
+	_lamp(ci, m, 58, 64)
+	_lamp(ci, m, -58, 64)
+	bush(ci, m, -66, 0, 24, Color("66bb6a"), Color("ff7eb3"))
+	bush(ci, m, 46, 0, 22, Color("66bb6a"), Color("ffeb3b"))
+
+
+static func _b_deposito(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var brick := Color("b5673e")
+	box(ci, m, -96, -h + 26, 192, h - 26, brick)
+	var arc := [-100, -h + 28]
+	for i in 13:
+		var a := PI + i * PI / 12.0
+		arc.append(cos(a) * 100.0)
+		arc.append(-h + 28 + sin(a) * 26.0)
+	poly(ci, m, arc, Color("8d99ae"))
+	signboard(ci, m, -46, -h + 34, 92, 20, Color("37474f"), Color("ffca28"), "DEPÓSITO", 13)
+	if m == 0:
+		ci.draw_rect(Rect2(-43, -76, 86, 76), OUT)
+		for i in 9:
+			ci.draw_rect(Rect2(-40, -73 + i * 8, 80, 6), Color("cfd8dc") if i % 2 == 0 else Color("b0bec5"))
+		for x in [-90, 58]:
+			ci.draw_rect(Rect2(x, -26, 30, 24), OUT)
+			ci.draw_rect(Rect2(x + 2, -24, 26, 20), Color("c69c6d"))
+			ci.draw_line(Vector2(x + 2, -14), Vector2(x + 28, -14), Color("8d6e63"), 2.0)
+	else:
+		ci.draw_rect(Rect2(-40, -73, 80, 12), Color(1, 0.85, 0.5, 0.6))
+	window_grid(ci, m, -96, -h + 56, -46, -40, 1, 2, 22, 18, 61)
+	window_grid(ci, m, 46, -h + 56, 96, -40, 1, 2, 22, 18, 62)
+
+
+static func _b_monumento(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var stone := Color("e8e2d5")
+	box(ci, m, -86, -14, 172, 14, stone.darkened(0.15), false)
+	box(ci, m, -64, -30, 128, 16, stone.darkened(0.08), false)
+	box(ci, m, -36, -74, 72, 44, stone)
+	poly(ci, m, [-20, -74, -12, -h + 26, 12, -h + 26, 20, -74], stone)
+	poly(ci, m, [-12, -h + 26, 0, -h, 12, -h + 26], GOLD)
+	if m == 0:
+		ci.draw_line(Vector2(-6, -80), Vector2(-4, -h + 34), stone.darkened(0.1), 3.0)
+	else:
+		ci.draw_colored_polygon(pv([-70, 0, -10, -h + 20, 10, -h + 20, 70, 0]), Color(1, 0.9, 0.6, 0.18))
+		ci.draw_circle(Vector2(0, -h + 12), 22, Color(1, 0.85, 0.3, 0.45))
+	text(ci, Vector2(-36, -46), "1888", 15, Color("8d6e63") if m == 0 else Color(1, 0.9, 0.6), 72)
+	for x in [-78, 62]:
+		if m == 0:
+			ci.draw_rect(Rect2(x, -38, 16, 24), OUT)
+			ci.draw_rect(Rect2(x + 2, -36, 12, 22), Color("4fc3f7"))
+			ci.draw_arc(Vector2(x + 8, -40), 8, PI, TAU, 8, Color("81d4fa"), 2.0)
+	bush(ci, m, -100, 0, 18, Color("66bb6a"), Color("ffeb3b"))
+
+
+static func _b_estacao_metro(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	box(ci, m, -96, -70, 192, 70, Color("eceff1"))
+	glass_grid(ci, m, -90, -64, 10, -6, 4, 29, Color("9ccbe8"), 63)
+	poly(ci, m, [-100, -70, -80, -100, 100, -100, 100, -70], Color("90caf9"))
+	if m == 0:
+		ci.draw_line(Vector2(-80, -100), Vector2(-100, -70), OUT, 3.0)
+		for i in 7:
+			ci.draw_line(Vector2(-78 + i * 26, -100), Vector2(-98 + i * 26 + 8, -70), Color(1, 1, 1, 0.5), 2.0)
+	box(ci, m, 26, -h + 40, 10, 80, Color("546e7a"), false)
+	circle(ci, m, Vector2(31, -h + 22), 22, Color("1565c0"))
+	text(ci, Vector2(9, -h + 32), "M", 28, Color.WHITE if m == 0 else Color(0.8, 0.95, 1.0), 44)
+	if m == 1:
+		ci.draw_circle(Vector2(31, -h + 22), 34, Color(0.3, 0.6, 1.0, 0.35))
+	signboard(ci, m, 42, -64, 50, 16, Color("1565c0"), WHITE, "METRÔ", 11)
+	# escada para o subsolo
+	if m == 0:
+		ci.draw_rect(Rect2(20, -40, 72, 40), OUT)
+		for i in 6:
+			ci.draw_rect(Rect2(22 + i * 3, -38 + i * 6.5, 68 - i * 6, 6), Color("9e9e9e").lightened(i * 0.05))
+	else:
+		ci.draw_rect(Rect2(22, -38, 68, 36), Color(1, 0.9, 0.6, 0.4))
+
+
+static func _b_porto(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	# navio atrás
+	poly(ci, m, [-112, -70, 112, -70, 96, -30, -96, -30], Color("c62828"))
+	box(ci, m, 50, -112, 46, 42, WHITE)
+	window_grid(ci, m, 52, -108, 94, -76, 3, 1, 9, 9, 64)
+	if m == 0:
+		ci.draw_rect(Rect2(76, -132, 12, 20), OUT)
+		ci.draw_rect(Rect2(78, -130, 8, 16), Color("ffb300"))
+	var cols := [Color("1e88e5"), Color("43a047"), Color("fb8c00"), Color("e53935"), Color("8e24aa"), Color("00897b")]
+	if m == 0:
+		for r in 2:
+			for c in 5:
+				var x := -98 + c * 28.0
+				var y := -92 - r * 18.0
+				ci.draw_rect(Rect2(x, y, 26, 17), OUT)
+				ci.draw_rect(Rect2(x + 1.5, y + 1.5, 23, 14), cols[(r * 5 + c) % cols.size()])
+				for k in 4:
+					ci.draw_line(Vector2(x + 5 + k * 5, y + 3), Vector2(x + 5 + k * 5, y + 14), Color(0, 0, 0, 0.15), 1.5)
+	# guindaste pórtico
+	if m == 0:
+		for x in [-60, -20]:
+			ci.draw_line(Vector2(x, 0), Vector2(x, -h + 20), OUT, 6.0)
+			ci.draw_line(Vector2(x, 0), Vector2(x, -h + 20), Color("ffb300"), 3.0)
+		ci.draw_line(Vector2(-110, -h + 22), Vector2(10, -h + 22), OUT, 8.0)
+		ci.draw_line(Vector2(-110, -h + 22), Vector2(10, -h + 22), Color("ffb300"), 5.0)
+		for i in 6:
+			ci.draw_line(Vector2(-60, -h + 30 + i * 30), Vector2(-20, -h + 45 + i * 30), Color("e0a000"), 2.0)
+		ci.draw_line(Vector2(-80, -h + 22), Vector2(-80, -130), Color("455a64"), 2.0)
+		ci.draw_rect(Rect2(-90, -130, 20, 10), Color("455a64"))
+	else:
+		ci.draw_circle(Vector2(-110, -h + 22), 9, Color(1, 0.3, 0.3, 0.6))
+	# cais
+	box(ci, m, -116, -30, 232, 30, Color("90a4ae"))
+	signboard(ci, m, 10, -26, 84, 20, Color("0d47a1"), WHITE, "PORTO", 15)
+	if m == 0:
+		for x in [-100, -70, -40]:
+			ci.draw_circle(Vector2(x, -14), 6, OUT)
+			ci.draw_circle(Vector2(x, -14), 4, Color("ffca28"))
+
+
+static func _b_complexo_financeiro(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var glass := Color("2f6f8f")
+	box(ci, m, 30, -h * 0.62, 78, h * 0.62, glass.darkened(0.1))
+	glass_grid(ci, m, 36, -h * 0.62 + 8, 102, -60, 3, 22, Color("4f8fb0"), 65)
+	box(ci, m, -108, -h * 0.78, 70, h * 0.78, glass.darkened(0.15))
+	glass_grid(ci, m, -102, -h * 0.78 + 8, -44, -60, 3, 22, Color("4f8fb0"), 66)
+	poly(ci, m, [-65, 0, -65, -h + 40, -30, -h, 5, -h + 40, 5, 0], glass)
+	glass_grid(ci, m, -58, -h + 46, -2, -60, 3, 22, Color("5ba3c4"), 67)
+	if m == 0:
+		ci.draw_line(Vector2(-65, -h + 40), Vector2(-30, -h), GOLD, 4.0)
+		ci.draw_line(Vector2(5, -h + 40), Vector2(-30, -h), GOLD, 4.0)
+	else:
+		ci.draw_circle(Vector2(-30, -h + 10), 26, Color(1, 0.85, 0.4, 0.35))
+	box(ci, m, -108, -60, 216, 60, Color("eceff1"), false)
+	signboard(ci, m, -80, -56, 160, 20, Color("263238"), GOLD, "FINANCEIRO", 15)
+	glass_door(ci, m, -20, -32, 40, 32)
+
+
+static func _b_aeroporto(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	# torre de controle
+	box(ci, m, 82, -h + 50, 20, h - 50, Color("eceff1"))
+	poly(ci, m, [72, -h + 50, 76, -h + 22, 108, -h + 22, 112, -h + 50], Color("455a64"))
+	if m == 0:
+		ci.draw_rect(Rect2(78, -h + 28, 28, 14), GLASS)
+		ci.draw_line(Vector2(92, -h + 22), Vector2(92, -h), OUT, 3.0)
+	else:
+		ci.draw_rect(Rect2(78, -h + 28, 28, 14), Color(0.6, 1.0, 0.7, 0.85))
+		ci.draw_circle(Vector2(92, -h), 10, Color(1, 0.3, 0.3, 0.6))
+	# terminal com cobertura curva
+	box(ci, m, -114, -110, 186, 110, Color("f5f5f5"))
+	var roof := [-120, -108]
+	for i in 11:
+		var k := i / 10.0
+		roof.append(-120 + k * 198)
+		roof.append(-108 - sin(k * PI) * 26)
+	roof.append_array([78, -108])
+	poly(ci, m, roof, Color("90a4ae"))
+	glass_grid(ci, m, -108, -100, 66, -8, 6, 23, Color("8fcbea"), 68)
+	signboard(ci, m, -80, -96, 124, 22, Color("0277bd"), WHITE, "AEROPORTO", 15)
+	# avião decolando
+	var pc := Vector2(-40, -h + 30)
+	if m == 0:
+		var body := [pc.x - 50, pc.y + 6, pc.x + 40, pc.y - 8, pc.x + 54, pc.y - 12, pc.x + 50, pc.y - 4, pc.x - 46, pc.y + 14]
+		poly(ci, m, body, WHITE)
+		poly(ci, m, [pc.x - 4, pc.y + 2, pc.x + 16, pc.y + 22, pc.x + 24, pc.y + 20, pc.x + 14, pc.y - 2], Color("cfd8dc"))
+		poly(ci, m, [pc.x - 46, pc.y + 8, pc.x - 54, pc.y - 12, pc.x - 40, pc.y - 10, pc.x - 32, pc.y + 4], Color("0277bd"))
+		for i in 5:
+			ci.draw_circle(Vector2(pc.x - 20 + i * 11, pc.y + 4 - i * 1.6), 2.0, Color("0277bd"))
+	else:
+		ci.draw_circle(Vector2(pc.x + 54, pc.y - 12), 6, Color(1, 1, 0.8, 0.9))
+		ci.draw_circle(Vector2(pc.x - 54, pc.y - 12), 5, Color(1, 0.3, 0.3, 0.9))
+
+
+static func _b_torre_iconica(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var base_w := 170.0
+	var top_w := 40.0
+	var top := -h + 70
+	poly(ci, m, [-base_w / 2, 0, base_w / 2, 0, top_w / 2, top, -top_w / 2, top], Color("4a6fa5"))
+	var floors := int((h - 100) / 16.0)
+	for f in floors:
+		var y := -18.0 - f * 16.0
+		var k := (-y) / (h - 70)
+		var half := lerpf(base_w / 2, top_w / 2, k) - 6
+		if m == 0:
+			ci.draw_rect(Rect2(-half, y - 10, half * 2, 8), Color("7ea6d9") if f % 6 != 5 else GOLD)
+		elif f % 3 != 1:
+			ci.draw_rect(Rect2(-half, y - 10, half * 2, 8), Color(0.75, 0.9, 1.0, 0.7))
+	if m == 0:
+		ci.draw_colored_polygon(pv([-top_w / 2, top, top_w / 2, top, 0, -h + 10]), Color("cfd8dc"))
+		ci.draw_line(Vector2(0, -h + 10), Vector2(0, -h - 20), OUT, 3.0)
+		ci.draw_colored_polygon(pv([0, 0, 18, 0, 6, top, 0, top]), Color(1, 1, 1, 0.18))
+	else:
+		ci.draw_circle(Vector2(0, -h - 20), 14, Color(1, 0.3, 0.3, 0.5))
+		ci.draw_circle(Vector2(0, -h + 30), 30, Color(0.6, 0.85, 1.0, 0.3))
+	glass_door(ci, m, -24, -40, 48, 40)
+
+
+static func _b_resort(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	var body := Color("fffaf0")
+	box(ci, m, -96, -h + 30, 192, h - 70, body)
+	poly(ci, m, [-100, -h + 30, -70, -h + 6, 70, -h + 6, 100, -h + 30], Color("ffb74d"))
+	var rows := int((h - 110) / 30.0)
+	for r in rows:
+		var y := -h + 44 + r * 30.0
+		for c in 5:
+			window(ci, m, -86 + c * 36, y, 24, 18, 69)
+		if m == 0:
+			ci.draw_rect(Rect2(-94, y + 21, 188, 4), Color("4dd0e1"))
+	signboard(ci, m, -50, -h + 12, 100, 18, Color("00838f"), WHITE, "RESORT", 14)
+	if m == 0:
+		ci.draw_rect(Rect2(-100, -40, 200, 40), Color("fff3e0"))
+		ci.draw_rect(Rect2(-60, -18, 120, 14), OUT)
+		ci.draw_rect(Rect2(-58, -16, 116, 10), Color("29b6f6"))
+		ci.draw_line(Vector2(-50, -12), Vector2(40, -12), Color(1, 1, 1, 0.6), 2.0)
+	else:
+		ci.draw_rect(Rect2(-58, -16, 116, 10), Color(0.4, 0.9, 1.0, 0.8))
+	palm(ci, m, -96, 0, 1.0)
+	palm(ci, m, 86, 0, 0.9)
+
+
+static func _b_marina(ci: CanvasItem, m: int, t: int, h: float, w: float) -> void:
+	if m == 0:
+		ci.draw_rect(Rect2(-116, -40, 232, 40), Color("29b6f6"))
+		for i in 6:
+			ci.draw_line(Vector2(-110 + i * 38, -30 + (i % 2) * 8), Vector2(-90 + i * 38, -30 + (i % 2) * 8), Color(1, 1, 1, 0.6), 2.0)
+		ci.draw_rect(Rect2(-116, -44, 232, 6), Color("8d6e63"))
+	# veleiros
+	for bx in [-70, 0]:
+		poly(ci, m, [bx - 30, -44, bx + 30, -44, bx + 22, -30, bx - 22, -30], WHITE)
+		if m == 0:
+			ci.draw_line(Vector2(bx, -44), Vector2(bx, -150), OUT, 3.0)
+		poly(ci, m, [bx + 2, -148, bx + 2, -52, bx + 40, -52], Color("fffde7"))
+		poly(ci, m, [bx - 2, -132, bx - 2, -52, bx - 30, -52], Color("ef5350"))
+	# farol
+	poly(ci, m, [56, -44, 64, -h + 40, 92, -h + 40, 100, -44], WHITE)
+	if m == 0:
+		for i in 4:
+			var y0 := -60.0 - i * 36.0
+			var k0 := (-y0 - 44) / (h - 84)
+			var k1 := (-(y0 - 16) - 44) / (h - 84)
+			ci.draw_colored_polygon(pv([56 + 8 * k0, y0, 100 - 8 * k0, y0, 100 - 8 * k1, y0 - 16, 56 + 8 * k1, y0 - 16]), Color("e53935"))
+	box(ci, m, 62, -h + 18, 32, 22, Color("ffeb3b") if m == 0 else Color.WHITE, false)
+	poly(ci, m, [58, -h + 18, 78, -h, 98, -h + 18], Color("e53935"))
+	if m == 1:
+		ci.draw_colored_polygon(pv([78, -h + 28, -116, -h - 10, -116, -h + 70]), Color(1, 1, 0.8, 0.22))
+		ci.draw_circle(Vector2(78, -h + 28), 20, Color(1, 1, 0.8, 0.6))
+	signboard(ci, m, -112, -26, 70, 18, Color("01579b"), WHITE, "MARINA", 12)

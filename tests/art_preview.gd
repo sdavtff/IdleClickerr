@@ -17,7 +17,7 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	var shots := [[0, false, 1], [1, false, 1], [2, false, 1], [0, true, 1], [1, false, 100], [2, true, 100]]
+	var shots := [[3, false, 1], [3, true, 1], [2, false, 1]]
 	for s in shots:
 		page = s[0]
 		night = s[1]

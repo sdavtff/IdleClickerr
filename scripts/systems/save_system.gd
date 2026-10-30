@@ -8,7 +8,8 @@ signal load_failed(reason: String)
 const SAVE_PATH := "user://idlecity_save.json"
 const BACKUP_PATH := "user://idlecity_save.bak"
 const TEMP_PATH := "user://idlecity_save.tmp"
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
+const OLD_FORMAT_BACKUP := "user://idlecity_save_v1_backup.json"
 const SALT := "IdleCity::v1::cidade"
 
 var last_save_time := 0.0
@@ -96,6 +97,12 @@ static func _parse(text: String) -> Variant:
 	if json.parse(text) != OK:
 		return null
 	return json.data
+
+
+## Guarda uma cópia do save antigo antes da migração para a 2.0.
+func backup_old_format() -> void:
+	if FileAccess.file_exists(SAVE_PATH) and not FileAccess.file_exists(OLD_FORMAT_BACKUP):
+		DirAccess.copy_absolute(ProjectSettings.globalize_path(SAVE_PATH), ProjectSettings.globalize_path(OLD_FORMAT_BACKUP))
 
 
 func delete_all() -> void:

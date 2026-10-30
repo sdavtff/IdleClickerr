@@ -1,8 +1,8 @@
 class_name BuildingNode
 extends Node2D
 ## Representação visual de um edifício construído, com luzes noturnas,
-## animações de construção/melhoria e elementos animados (roda-gigante,
-## turbina eólica, fumaça).
+## sombra, obra animada (andaime, guindaste e progresso), animações de
+## construção/melhoria e elementos animados (roda-gigante, turbina, fumaça).
 
 var uid := 0
 var id := ""
@@ -11,6 +11,66 @@ var w := 180.0
 var h := 150.0
 var lights: BuildingLights
 var _extra: Spinner
+var _scaffold: Scaffold
+var constructing := false
+
+
+class Scaffold extends Node2D:
+	var owner_node = null
+	var progress := 0.0
+	var left := 0.0
+	var _acc := 0.0
+	var _phase := 0.0
+
+	func _process(delta: float) -> void:
+		_phase += delta
+		_acc += delta
+		if _acc < 0.2:
+			return
+		_acc = 0.0
+		var b := BuildingSystem.get_building(owner_node.uid)
+		if b.is_empty():
+			return
+		progress = BuildingSystem.build_progress(b)
+		left = float(b.get("build_left", 0.0))
+		queue_redraw()
+
+	func _draw() -> void:
+		var w: float = owner_node.w
+		var h: float = owner_node.h
+		var out := BuildingArt.OUT
+		var top := -h * (0.15 + 0.85 * progress)
+		# rede de proteção e andaime
+		draw_rect(Rect2(-w * 0.5, top, w, -top), Color(1.0, 0.55, 0.1, 0.22))
+		var x := -w * 0.5
+		while x <= w * 0.5 + 1:
+			draw_line(Vector2(x, 0), Vector2(x, top), Color("8d6e63"), 3.0)
+			x += w / 5.0
+		var y := 0.0
+		while y >= top:
+			draw_line(Vector2(-w * 0.5, y), Vector2(w * 0.5, y), Color("a1887f"), 3.0)
+			y -= 28.0
+		# guindaste
+		var mast := Vector2(w * 0.5 - 14, 0)
+		var ch := maxf(h + 30.0, 140.0)
+		draw_line(mast, mast - Vector2(0, ch), out, 6.0)
+		draw_line(mast, mast - Vector2(0, ch), Color("ffb300"), 3.0)
+		var arm := mast - Vector2(0, ch)
+		var swing := sin(_phase * 0.6) * 10.0
+		var tip := arm + Vector2(-w * 0.8, swing * 0.2)
+		draw_line(arm + Vector2(30, 0), tip, out, 6.0)
+		draw_line(arm + Vector2(30, 0), tip, Color("ffb300"), 3.0)
+		var hook := Vector2(lerpf(tip.x, arm.x, 0.4) + swing, arm.y)
+		draw_line(hook, hook + Vector2(0, 50), Color("455a64"), 2.0)
+		draw_rect(Rect2(hook + Vector2(-14, 50), Vector2(28, 12)), Color("90a4ae"))
+		# barra de progresso e tempo
+		var bw := 140.0
+		var bp := Vector2(-bw * 0.5, top - 46)
+		draw_rect(Rect2(bp - Vector2(3, 3), Vector2(bw + 6, 30)), out)
+		draw_rect(Rect2(bp, Vector2(bw, 24)), Color("eceff1"))
+		draw_rect(Rect2(bp, Vector2(bw * progress, 24)), Color("ffb300"))
+		var f := BuildingArt.font()
+		draw_string(f, bp + Vector2(0, 18), "Obra: " + Fmt.short_duration(ceilf(left)), HORIZONTAL_ALIGNMENT_CENTER, bw, 15, out)
 
 
 func setup(b: Dictionary) -> void:
@@ -23,6 +83,7 @@ func setup(b: Dictionary) -> void:
 	add_child(lights)
 	_add_extras()
 	refresh(int(b["level"]))
+	set_constructing(not BuildingSystem.is_complete(b))
 
 
 func refresh(new_level: int) -> void:
@@ -31,6 +92,22 @@ func refresh(new_level: int) -> void:
 	h = BuildingArt.height_of(id, level)
 	queue_redraw()
 	lights.queue_redraw()
+
+
+func set_constructing(on: bool) -> void:
+	constructing = on
+	self_modulate = Color(1, 1, 1, 0.38) if on else Color.WHITE
+	lights.visible = not on
+	if _extra:
+		_extra.visible = not on
+	if on and _scaffold == null:
+		_scaffold = Scaffold.new()
+		_scaffold.owner_node = self
+		add_child(_scaffold)
+	elif not on and _scaffold != null:
+		_scaffold.queue_free()
+		_scaffold = null
+	queue_redraw()
 
 
 func _add_extras() -> void:
@@ -46,14 +123,21 @@ func _add_extras() -> void:
 			_extra.position = Vector2(61, -152)
 			add_child(_extra)
 		"fabrica":
-			for cx in [62, 88]:
-				var s := ChimneySmoke.new()
-				s.position = Vector2(cx, -BuildingArt.height_of(id, 1) - 4)
-				add_child(s)
+			if SettingsManager.quality > 0:
+				for cx in [62, 88]:
+					var s := ChimneySmoke.new()
+					s.position = Vector2(cx, -BuildingArt.height_of(id, 1) - 4)
+					add_child(s)
 
 
 func _draw() -> void:
+	if SettingsManager.quality > 0 and not constructing:
+		# sombra projetada na calçada e no gramado vizinho
+		draw_colored_polygon(PackedVector2Array([Vector2(-w * 0.5, 0), Vector2(w * 0.5, 0), Vector2(w * 0.5 + 22, 12), Vector2(-w * 0.5 + 22, 12)]), Color(0, 0, 0, 0.16))
+		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.5, 0), Vector2(w * 0.5, -minf(h * 0.45, 90.0)), Vector2(w * 0.5 + 26, -minf(h * 0.45, 90.0) + 10), Vector2(w * 0.5 + 26, 0)]), Color(0, 0, 0, 0.12))
 	BuildingArt.draw(self, id, level, 0)
+	if constructing:
+		return
 	# placa de nível
 	var f := BuildingArt.font()
 	var txt := "Nv %d" % level

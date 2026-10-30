@@ -14,7 +14,7 @@ func _init() -> void:
 	super()
 	title = "BEM-VINDO DE VOLTA!"
 	icon_name = "clock"
-	desired_size = Vector2(760, 520)
+	desired_size = Vector2(860, 600)
 
 
 func show_report(report: Dictionary) -> void:
@@ -25,6 +25,21 @@ func show_report(report: Dictionary) -> void:
 	var extra := []
 	if report.get("capped", false):
 		extra.append("A cidade acumula renda por no máximo 24 horas.")
+	if int(report.get("buildings_done", 0)) > 0:
+		extra.append("%d obra(s) concluída(s)." % int(report["buildings_done"]))
+	var rd: Array = report.get("research_done", [])
+	if not rd.is_empty():
+		extra.append("Pesquisa concluída: " + ", ".join(rd))
+	if int(report.get("investments", 0)) > 0:
+		extra.append("%d investimento(s) prontos para resgate no Banco." % int(report["investments"]))
+	var bc: Dictionary = report.get("by_cat", {})
+	if not bc.is_empty():
+		var parts := []
+		for k in [["res", "Impostos"], ["com", "Comércio"], ["biz", "Empresas"], ["fun", "Lazer"], ["esp", "Especiais"]]:
+			if float(bc.get(k[0], 0.0)) > 0.0:
+				parts.append("%s %s" % [k[1], Fmt.money(bc[k[0]])])
+		if not parts.is_empty():
+			extra.append("  |  ".join(parts))
 	var pa := float(report.get("pop_after", 0))
 	var pb := float(report.get("pop_before", 0))
 	if pa - pb >= 1.0:
@@ -46,6 +61,8 @@ func rebuild() -> void:
 	_money_l = UI.outlined(UI.label("", 52, UI.C_GOLD, true), 10)
 	h.add_child(_money_l)
 	_extra_l = UI.label("", 18, UI.C_MUTED, false, HORIZONTAL_ALIGNMENT_CENTER)
+	_extra_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_extra_l.custom_minimum_size = Vector2(700, 0)
 	list.content.add_child(_extra_l)
 	_btn = UI.button("COLETAR RECOMPENSAS", UI.C_GREEN, _collect, 26, false, "coin")
 	_btn.custom_minimum_size = Vector2(0, 78)
@@ -54,7 +71,7 @@ func rebuild() -> void:
 
 func _collect() -> void:
 	var amount := IdleSystem.collect()
-	AudioManager.play("coin")
+	AudioManager.play("cash")
 	close_panel()
 	collected.emit(amount)
 

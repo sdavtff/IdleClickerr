@@ -7,6 +7,8 @@ signal toast(text: String, kind: String)
 signal city_reset
 
 const TICK := 0.1
+## Versão do formato do save. 1 = Idle City 1.0; 2 = Idle City 2.0.
+const SAVE_FORMAT := 2
 const AUTOSAVE_INTERVAL := 15.0
 const MISSION_CHECK_INTERVAL := 0.5
 
@@ -15,6 +17,7 @@ var paused_sim := false
 var _acc := 0.0
 var _autosave_acc := 0.0
 var _mission_acc := 0.0
+var _period_acc := 0.0
 
 
 func _ready() -> void:
@@ -23,7 +26,15 @@ func _ready() -> void:
 	# O botão "voltar" do Android fecha janelas em vez de sair do jogo.
 	get_tree().set_quit_on_go_back(false)
 	MissionSystem.mission_ready.connect(func(m): toast.emit("Missão concluída: " + m["text"], "mission"))
-	MissionSystem.achievement_unlocked.connect(func(a): toast.emit("Conquista: " + a["name"] + " (+2% renda)", "achievement"))
+	MissionSystem.achievement_unlocked.connect(func(a): toast.emit("Conquista: %s! +2%% renda e %s" % [a["name"], Fmt.money(MissionSystem.achievement_reward())], "achievement"))
+	ResearchSystem.research_completed.connect(func(r): toast.emit("Pesquisa concluída: " + r["name"], "research"))
+	EventSystem.event_started.connect(func(e): toast.emit("Evento: %s! %s" % [e["name"], e["desc"]], "event"))
+	EventSystem.event_goal_done.connect(func(e, amount): toast.emit("Objetivo do evento cumprido! +%s" % Fmt.money(amount), "mission"))
+	ChallengeSystem.challenge_completed.connect(func(c, w): toast.emit("%s concluído: %s" % ["Meta semanal" if w else "Desafio diário", c["text"]], "mission"))
+	EconomySystem.investment_matured.connect(func(inv): toast.emit("Investimento pronto para resgate: " + GameData.investment_def(inv["id"])["name"], "info"))
+	BuildingSystem.building_completed.connect(func(b):
+		if running:
+			toast.emit("Obra concluída: " + GameData.get_def(b["id"])["name"], "info"))
 	SaveSystem.load_failed.connect(func(reason): toast.emit(reason, "warning"))
 
 
@@ -38,6 +49,7 @@ func new_game() -> void:
 	SaveSystem.delete_all()
 	PrestigeSystem.wipe()
 	MissionSystem.wipe()
+	ChallengeSystem.reset()
 	EconomySystem.lifetime_earned = 0.0
 	_setup_fresh_city()
 	save_game()
@@ -48,6 +60,8 @@ func continue_game() -> bool:
 	var data := SaveSystem.read()
 	if data.is_empty():
 		return false
+	if int(data.get("format", 1)) < SAVE_FORMAT:
+		SaveSystem.backup_old_format()
 	apply_state(data)
 	return true
 
@@ -58,6 +72,8 @@ func _setup_fresh_city() -> void:
 	EconomySystem.reset(PrestigeSystem.start_money())
 	MissionSystem.reset_run()
 	MissionSystem.note_regions(ExpansionSystem.unlocked)
+	ResearchSystem.reset()
+	EventSystem.reset()
 	PopulationSystem.reset()
 	# A pequena vila inicial.
 	BuildingSystem.build("casa_pequena", true)
@@ -80,10 +96,37 @@ func collect_state() -> Dictionary:
 		"missions": MissionSystem.to_dict(),
 		"prestige": PrestigeSystem.to_dict(),
 		"idle": IdleSystem.to_dict(),
+		"research": ResearchSystem.to_dict(),
+		"events": EventSystem.to_dict(),
+		"challenges": ChallengeSystem.to_dict(),
+		"format": SAVE_FORMAT,
 	}
 
 
+## Converte saves antigos para o formato atual (nunca perde dados).
+static func migrate(data: Dictionary) -> Dictionary:
+	var fmt := int(data.get("format", 1))
+	if fmt < 2:
+		# 1.0 -> 2.0: edifícios antigos já estão prontos, imposto normal,
+		# sem pesquisas/eventos/desafios ainda.
+		var bsec = data.get("buildings", {})
+		if typeof(bsec) == TYPE_DICTIONARY:
+			for b in bsec.get("buildings", []):
+				if typeof(b) == TYPE_DICTIONARY:
+					b["build_left"] = 0.0
+		var eco = data.get("economy", {})
+		if typeof(eco) == TYPE_DICTIONARY and not eco.has("tax_level"):
+			eco["tax_level"] = 1
+		for k in ["research", "events", "challenges"]:
+			if not data.has(k):
+				data[k] = {}
+		data["format"] = 2
+		data["migrated_from"] = fmt
+	return data
+
+
 func apply_state(data: Dictionary) -> void:
+	data = migrate(data)
 	PrestigeSystem.from_dict(_section(data, "prestige"))
 	ExpansionSystem.from_dict(_section(data, "expansion"))
 	MissionSystem.from_dict(_section(data, "missions"))
@@ -92,6 +135,9 @@ func apply_state(data: Dictionary) -> void:
 	PopulationSystem.from_dict(_section(data, "population"))
 	HappinessSystem.from_dict(_section(data, "happiness"))
 	IdleSystem.from_dict(_section(data, "idle"))
+	ResearchSystem.from_dict(_section(data, "research"))
+	EventSystem.from_dict(_section(data, "events"))
+	ChallengeSystem.from_dict(_section(data, "challenges"))
 	PopulationSystem.recompute()
 	EconomySystem.recompute()
 
@@ -143,12 +189,19 @@ func _process(delta: float) -> void:
 	if _mission_acc >= MISSION_CHECK_INTERVAL:
 		_mission_acc = 0.0
 		MissionSystem.check()
+		_period_acc += MISSION_CHECK_INTERVAL
+		if _period_acc >= 60.0:
+			_period_acc = 0.0
+			ChallengeSystem.refresh_periods()
 	_autosave_acc += delta
 	if _autosave_acc >= AUTOSAVE_INTERVAL:
 		save_game()
 
 
 func simulate(dt: float) -> void:
+	BuildingSystem.advance_construction(dt)
+	ResearchSystem.tick(dt)
+	EventSystem.tick(dt)
 	HappinessSystem.tick(dt)
 	PopulationSystem.tick(dt)
 	EconomySystem.recompute()

@@ -91,6 +91,7 @@ func can_enter() -> bool:
 func _draw() -> void:
 	var out := BuildingArt.OUT
 	var swing: float = [0.0, 5.0, 0.0, -5.0][frame]
+	draw_rect(Rect2(-8, -2, 16, 4), Color(0, 0, 0, 0.15))
 	# pernas
 	draw_line(Vector2(-2, -14), Vector2(-2 + swing, 0), out, 5.0)
 	draw_line(Vector2(2, -14), Vector2(2 - swing, 0), out, 5.0)

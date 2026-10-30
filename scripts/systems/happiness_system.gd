@@ -43,6 +43,8 @@ func recompute() -> void:
 	var comfort_sum := 0.0
 	var cap_sum := 0.0
 	for b in BuildingSystem.buildings:
+		if not BuildingSystem.is_complete(b):
+			continue
 		var def := GameData.get_def(b["id"])
 		if def.has("service"):
 			coverage[def["service"]] += BuildingSystem.coverage_of(b)
@@ -62,11 +64,28 @@ func recompute() -> void:
 	var housing := 0.0 if cap_sum <= 0.0 else HOUSING_MAX * comfort_sum / cap_sum
 	total += housing
 	factors.append({"name": "Moradias", "value": housing, "max": HOUSING_MAX})
+	if pollution > 0.0:
+		pollution *= Modifiers.mult("pollution", 0.0)
 	var poll_penalty := clampf(pollution * 1.5, 0.0, 20.0)
 	if poll_penalty > 0.0:
 		total -= poll_penalty
 		factors.append({"name": "Poluição", "value": -poll_penalty, "max": 0.0})
-	var bonus := flat + PrestigeSystem.happiness_bonus()
+	var tax_h := EconomySystem.tax_happiness()
+	if tax_h != 0.0:
+		total += tax_h
+		factors.append({"name": "Impostos", "value": tax_h, "max": 0.0})
+	var unemp := PopulationSystem.unemployment_rate()
+	# Desemprego só pesa em cidades maiores (a vila inicial não é punida).
+	var size_k := clampf((PopulationSystem.population - 40.0) / 160.0, 0.0, 1.0)
+	if unemp > 0.25 and size_k > 0.0:
+		var pen := -clampf((unemp - 0.25) * 30.0, 0.0, 10.0) * size_k
+		total += pen
+		factors.append({"name": "Desemprego", "value": pen, "max": 0.0})
+	var ev := EventSystem.fx("happy")
+	if ev != 0.0:
+		total += ev
+		factors.append({"name": "Evento", "value": ev, "max": 0.0})
+	var bonus := flat + PrestigeSystem.happiness_bonus() + ResearchSystem.fx("happy")
 	if bonus != 0.0:
 		total += bonus
 		factors.append({"name": "Bônus", "value": bonus, "max": 0.0})

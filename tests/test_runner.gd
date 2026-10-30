@@ -18,6 +18,14 @@ func _ready() -> void:
 	test_save_corruption()
 	test_missions_and_regions()
 	test_prestige()
+	test_construction_time()
+	test_research()
+	test_events()
+	test_challenges()
+	test_finance()
+	test_migration_v1()
+	test_offline_v2()
+	test_new_buildings()
 	if "--balance" in OS.get_cmdline_user_args():
 		balance_sim()
 	print("=== %d passaram, %d falharam ===" % [passed, failed])
@@ -40,6 +48,7 @@ func near(a: float, b: float, tol := 0.01) -> bool:
 
 func fresh() -> void:
 	SaveSystem.delete_all()
+	BuildingSystem.instant_build = true
 	GameManager.new_game()
 
 
@@ -258,10 +267,239 @@ func test_prestige() -> void:
 	check(MissionSystem.lifetime["prestiges"] == 1, "estatística mantida")
 
 
+func test_construction_time() -> void:
+	print("[2.0: Tempo de construção]")
+	fresh()
+	BuildingSystem.instant_build = false
+	EconomySystem.money = 1e6
+	var b := BuildingSystem.build("loja_conveniencia")
+	check(not BuildingSystem.is_complete(b), "obra começa em andamento (%s)" % Fmt.short_duration(b["build_left"]))
+	EconomySystem.recompute()
+	var inc := EconomySystem.income_ps
+	check(BuildingSystem.upgrade(b["uid"], 1) == 0, "não melhora durante a obra")
+	var done := []
+	BuildingSystem.building_completed.connect(func(x): done.append(x), CONNECT_ONE_SHOT)
+	BuildingSystem.advance_construction(float(b["build_left"]) + 0.1)
+	check(BuildingSystem.is_complete(b) and done.size() == 1, "obra concluída emite sinal")
+	EconomySystem.recompute()
+	check(EconomySystem.income_ps > inc, "edifício pronto passa a render")
+	var b2 := BuildingSystem.build("padaria")
+	var cost := BuildingSystem.accelerate_cost(b2)
+	var m0 := EconomySystem.money
+	check(cost > 0.0 and BuildingSystem.accelerate(b2["uid"]) and BuildingSystem.is_complete(b2), "acelerar conclui a obra")
+	check(near(EconomySystem.money, m0 - cost), "acelerar cobra o valor exibido")
+	ResearchSystem.force_complete("c1")
+	check(BuildingSystem.build_time("hospital") < GameData.base_build_time(GameData.get_def("hospital")), "pesquisa reduz o tempo de obra")
+	BuildingSystem.instant_build = true
+
+
+func test_research() -> void:
+	print("[2.0: Pesquisas]")
+	fresh()
+	check(not ResearchSystem.can_start("c1"), "sem pontos não pesquisa")
+	ResearchSystem.points = 100
+	check(ResearchSystem.state_of("c2") == "locked", "pré-requisito bloqueia")
+	check(ResearchSystem.start("i1"), "inicia pesquisa")
+	check(not ResearchSystem.can_start("c1"), "uma pesquisa por vez")
+	EconomySystem.money = 1e6
+	BuildingSystem.build("loja_conveniencia")
+	EconomySystem.recompute()
+	var before := float(EconomySystem.income_by_cat.get("com", 0.0))
+	ResearchSystem.tick(ResearchSystem.active_left + 1.0)
+	check(ResearchSystem.is_done("i1") and ResearchSystem.active_id == "", "pesquisa concluída após o tempo")
+	ResearchSystem.force_complete("m1")
+	EconomySystem.recompute()
+	check(float(EconomySystem.income_by_cat.get("com", 0.0)) > before * 1.1, "pesquisa aumenta renda comercial")
+	ExpansionSystem.unlocked = 4
+	EconomySystem.money = 1e8
+	check(not BuildingSystem.can_build("estacao_metro")["ok"], "metrô exige pesquisa")
+	ResearchSystem.force_complete("t2")
+	check(BuildingSystem.can_build("estacao_metro")["ok"], "pesquisa libera o metrô")
+	var rate0 := ResearchSystem.compute_rate()
+	BuildingSystem.build("escola")
+	check(ResearchSystem.compute_rate() > rate0, "escolas geram pontos de pesquisa")
+	ResearchSystem.points = 0
+	ResearchSystem.simulate_offline(86400)
+	check(ResearchSystem.points <= ResearchSystem.compute_rate() * 7200 * 0.5 + 1, "pesquisa offline limitada")
+
+
+func test_events() -> void:
+	print("[2.0: Eventos]")
+	fresh()
+	EconomySystem.money = 1e6
+	BuildingSystem.build("loja_conveniencia")
+	for i in 20:
+		GameManager.simulate(0.5)
+	EventSystem.start("festival")
+	HappinessSystem.recompute()
+	check(EventSystem.fx("happy") > 0 and HappinessSystem.factors.any(func(f): return f["name"] == "Evento"), "festival aumenta felicidade")
+	var m0 := EconomySystem.money
+	for i in 3:
+		MissionSystem.on_bubble()
+	check(EventSystem.goal_done and EconomySystem.money > m0, "objetivo do evento dá recompensa")
+	EventSystem.tick(1000)
+	check(EventSystem.active_id == "" and EventSystem.fx("happy") == 0.0, "evento termina após a duração")
+	EventSystem.start("boom")
+	var c := BuildingSystem.build_cost("casa_pequena")
+	EventSystem.tick(1000)
+	check(c < BuildingSystem.build_cost("casa_pequena"), "boom imobiliário baratea construções")
+	EventSystem.start("crise")
+	HappinessSystem.value = 80
+	EventSystem.tick(1000)
+	check(MissionSystem.lifetime["events_done"] >= 2, "crise superada com felicidade conta como objetivo")
+	EventSystem.start("tempestade")
+	EventSystem.skip(10000)
+	check(EventSystem.active_id == "", "evento expira no tempo offline")
+
+
+func test_challenges() -> void:
+	print("[2.0: Desafios diários e semanais]")
+	fresh()
+	ChallengeSystem.reset()
+	check(ChallengeSystem.daily.size() == 3 and ChallengeSystem.weekly.size() == 3, "3 desafios diários e 3 metas semanais")
+	var first: Dictionary = ChallengeSystem.daily[0]
+	first["progress"] = first["target"]
+	var m0 := EconomySystem.money
+	var stars := PrestigeSystem.stars
+	check(ChallengeSystem.claim(false, 0) and EconomySystem.money > m0, "coleta desafio diário")
+	check(not ChallengeSystem.claim(false, 0), "não coleta duas vezes")
+	ChallengeSystem.weekly[1]["progress"] = ChallengeSystem.weekly[1]["target"]
+	check(ChallengeSystem.claim(true, 1) and PrestigeSystem.stars == stars + 1, "meta semanal dá estrela")
+	var saved_day := ChallengeSystem.day_key
+	ChallengeSystem.day_key = "9999-12-31"
+	ChallengeSystem.refresh_periods()
+	check(ChallengeSystem.day_key == "9999-12-31" and ChallengeSystem.daily[0]["claimed"], "relógio voltando não gera novos desafios")
+	ChallengeSystem.day_key = "2000-01-01"
+	ChallengeSystem.refresh_periods()
+	check(ChallengeSystem.day_key == saved_day and not ChallengeSystem.daily[0]["claimed"], "novo dia gera novos desafios")
+	ChallengeSystem.note("build", 100)
+	var any_build := false
+	for c in ChallengeSystem.daily + ChallengeSystem.weekly:
+		if c["kind"] == "build" and c["progress"] > 0:
+			any_build = true
+	check(any_build or not (ChallengeSystem.daily + ChallengeSystem.weekly).any(func(c): return c["kind"] == "build"), "progresso registrado")
+
+
+func test_finance() -> void:
+	print("[2.0: Finanças]")
+	fresh()
+	EconomySystem.money = 1e6
+	for id in ["casa_pequena", "casa_pequena", "loja_conveniencia"]:
+		BuildingSystem.build(id)
+	for i in 300:
+		GameManager.simulate(0.5)
+	EconomySystem.set_tax_level(1)
+	var t1 := EconomySystem.tax_income
+	EconomySystem.set_tax_level(3)
+	check(EconomySystem.tax_income > t1 * 1.4, "imposto alto arrecada mais")
+	HappinessSystem.recompute()
+	var h_high := HappinessSystem.target
+	EconomySystem.set_tax_level(0)
+	HappinessSystem.recompute()
+	check(HappinessSystem.target > h_high + 15, "imposto alto reduz felicidade")
+	EconomySystem.set_tax_level(1)
+	var cats: Dictionary = EconomySystem.income_by_cat
+	check(cats.has("res") and cats.has("com"), "receitas por categoria")
+	var m0 := EconomySystem.money
+	var lim := EconomySystem.loan_limit()
+	check(EconomySystem.take_loan(lim) and near(EconomySystem.money, m0 + lim), "empréstimo recebido")
+	check(not EconomySystem.take_loan(lim), "apenas um empréstimo por vez")
+	check(near(EconomySystem.loan_balance, lim * 1.15), "juros de 15%")
+	var debt := EconomySystem.loan_balance
+	for i in 100:
+		GameManager.simulate(0.5)
+	check(EconomySystem.loan_balance < debt, "parcelas automáticas reduzem a dívida")
+	EconomySystem.money += EconomySystem.loan_balance
+	check(EconomySystem.repay_loan() and EconomySystem.loan_balance == 0.0, "quitar dívida")
+	EconomySystem.money = 1e6
+	check(EconomySystem.invest("cdb", 500.0), "aplica no CDB")
+	check(EconomySystem.collect_investment(0) < 0.0, "não resgata antes do prazo")
+	EconomySystem.simulate_offline(3601)
+	var got := EconomySystem.collect_investment(0)
+	check(near(got, 500.0 * 1.08), "CDB rende 8% em 1 hora")
+	check(float(EconomySystem.ledger.get("build", 0.0)) > 0 and float(EconomySystem.ledger.get("loan_in", 0.0)) > 0, "relatório registra ganhos e gastos")
+	for i in 70:
+		EconomySystem.record_history()
+	check(EconomySystem.history.size() <= EconomySystem.HISTORY_MAX, "histórico limitado")
+
+
+func test_migration_v1() -> void:
+	print("[2.0: Migração de save da 1.0]")
+	fresh()
+	var v1 := {
+		"economy": {"money": 54321.0, "total_earned": 9e5, "lifetime_earned": 2e6},
+		"buildings": {"buildings": [{"uid": 1, "id": "casa_pequena", "lot": 0, "level": 7}, {"uid": 2, "id": "padaria", "lot": 1, "level": 12}], "next_uid": 3},
+		"population": {"population": 30.0}, "happiness": {"value": 55.0}, "expansion": {"unlocked": 2},
+		"missions": {"claimed": ["m01"], "achievements": ["a_build_1"], "lifetime": {"built": 5}},
+		"prestige": {"stars": 2, "stars_total": 3, "count": 1, "upgrades": {"marketing": 1}},
+		"idle": {"last_active": Time.get_unix_time_from_system() - 120},
+	}
+	SaveSystem.write(v1)
+	check(GameManager.continue_game(), "save 1.0 carrega na 2.0")
+	check(near(EconomySystem.money, 54321.0) and ExpansionSystem.unlocked == 2, "dinheiro e regiões preservados")
+	check(BuildingSystem.buildings.size() == 2 and BuildingSystem.buildings.all(func(b): return BuildingSystem.is_complete(b)), "edifícios antigos prontos")
+	check(int(BuildingSystem.buildings[1]["level"]) == 12 and PrestigeSystem.level("marketing") == 1, "níveis e prestígio preservados")
+	check(EconomySystem.tax_level == 1 and ResearchSystem.done.is_empty(), "novos sistemas com valores padrão")
+	check(FileAccess.file_exists(SaveSystem.OLD_FORMAT_BACKUP), "cópia de segurança do save antigo")
+	GameManager.save_game()
+	check(int(SaveSystem.read().get("format", 0)) == 2, "save regravado no formato 2")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveSystem.OLD_FORMAT_BACKUP))
+
+
+func test_offline_v2() -> void:
+	print("[2.0: Offline]")
+	fresh()
+	BuildingSystem.instant_build = false
+	EconomySystem.money = 1e6
+	var b := BuildingSystem.build("loja_conveniencia")
+	BuildingSystem.instant_build = true
+	IdleSystem.pending = {}
+	IdleSystem.last_active_time = Time.get_unix_time_from_system() + 3600
+	var m0 := EconomySystem.money
+	var r := IdleSystem.process_absence(Time.get_unix_time_from_system())
+	check(r.get("clock_back", false) and IdleSystem.pending.is_empty() and EconomySystem.money == m0, "relógio adiantado/voltado não gera renda")
+	IdleSystem.last_active_time = Time.get_unix_time_from_system() - 7200
+	r = IdleSystem.process_absence(Time.get_unix_time_from_system())
+	check(BuildingSystem.is_complete(b) and int(r["buildings_done"]) == 1, "obras concluem offline")
+	check(not IdleSystem.pending.is_empty() and r["by_cat"].size() > 0, "resumo por categoria")
+	var r2 := IdleSystem.process_absence(Time.get_unix_time_from_system())
+	check(r2.is_empty(), "sem recompensa duplicada ao reabrir")
+	var got := IdleSystem.collect()
+	check(got > 0.0 and IdleSystem.collect() == 0.0, "coleta uma única vez")
+
+
+func test_new_buildings() -> void:
+	print("[2.0: Novas construções]")
+	check(GameData.BUILDINGS.size() >= 48, "%d tipos de edifícios" % GameData.BUILDINGS.size())
+	check(GameData.buildings_in_category("esp").size() >= 5, "categoria Especiais")
+	check(GameData.region_count() == 8, "8 regiões (Orla Dourada)")
+	var ok := true
+	for d in GameData.BUILDINGS:
+		if not BuildingArt.HEIGHTS.has(d["id"]):
+			ok = false
+			print("    sem arte: ", d["id"])
+	check(ok, "todos os edifícios têm arte e altura")
+	fresh()
+	ExpansionSystem.unlocked = 8
+	EconomySystem.money = 1e14
+	for r in GameData.RESEARCH:
+		ResearchSystem.force_complete(r["id"])
+	var built := 0
+	for d in GameData.BUILDINGS:
+		if not BuildingSystem.build(d["id"]).is_empty():
+			built += 1
+	check(built == GameData.BUILDINGS.size() - 3 or built >= 45, "todas as construções podem ser construídas (%d)" % built)
+	EconomySystem.recompute()
+	check(EconomySystem.income_ps > 0 and not is_nan(EconomySystem.income_ps), "economia estável com todos os edifícios")
+	var r0 := ExpansionSystem.unlocked
+	check(r0 == 8, "regiões")
+
+
 ## Simula um jogador jogando de forma simples para verificar o ritmo.
 func balance_sim() -> void:
-	print("[Simulação de balanceamento]")
+	print("[Simulação de balanceamento (com tempo de obra, pesquisas e eventos)]")
 	fresh()
+	BuildingSystem.instant_build = false
 	var t := 0.0
 	var step := 1.0
 	var report := {}
@@ -274,6 +512,10 @@ func balance_sim() -> void:
 		MissionSystem.check()
 		for m in MissionSystem.active_missions():
 			MissionSystem.claim(m["id"])
+		if ResearchSystem.active_id == "":
+			for r in GameData.RESEARCH:
+				if ResearchSystem.start(r["id"]):
+					break
 		if ExpansionSystem.unlock(ExpansionSystem.unlocked):
 			report[ExpansionSystem.unlocked] = t
 		_bot_spend()
@@ -284,6 +526,8 @@ func balance_sim() -> void:
 			break
 	print("  final: %s | renda %s | pop %s | prestígio disponível: %d estrelas" % [Fmt.short_duration(t), Fmt.money_ps(EconomySystem.net_ps), Fmt.pop(PopulationSystem.population), PrestigeSystem.stars_on_reset()])
 	check(ExpansionSystem.unlocked >= 4, "progride até a Zona industrial em 10h simuladas")
+	print("  pesquisas concluídas: %d | eventos cumpridos: %d" % [ResearchSystem.done.size(), int(MissionSystem.lifetime["events_done"])])
+	BuildingSystem.instant_build = true
 
 
 func _bot_spend() -> void:

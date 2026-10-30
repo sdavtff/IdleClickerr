@@ -28,8 +28,25 @@ func rebuild() -> void:
 				_add_line(k)
 			list.content.add_child(_hint("Dica: comércios e empresas precisam de trabalhadores. Se a população for menor que os empregos, a eficiência cai."))
 		1:
-			for k in ["pop", "cap", "target", "growth", "jobs", "ratio"]:
+			for k in ["pop", "cap", "target", "growth", "jobs", "unemp"]:
 				_add_line(k)
+			list.content.add_child(UI.label("Necessidades dos moradores", 22, UI.C_TEXT, true))
+			for n in PopulationSystem.needs():
+				var c := UI.card()
+				list.content.add_child(c)
+				var h := UI.hbox(12)
+				c.add_child(h)
+				var nl := UI.label(n["name"], 20, UI.C_TEXT, true)
+				nl.custom_minimum_size = Vector2(150, 0)
+				h.add_child(nl)
+				var bar := UI.progress(n["value"], 1.0)
+				bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				h.add_child(bar)
+				var hl := UI.label(n["hint"], 15, UI.C_MUTED)
+				hl.custom_minimum_size = Vector2(330, 0)
+				h.add_child(hl)
+				_bars.append({"need": n["name"], "bar": bar})
 			list.content.add_child(_hint("A felicidade define quantos moradores aceitam viver na cidade: com 50% ou mais todas as casas ficam ocupadas, e quanto mais feliz, mais rápido ela cresce."))
 		2:
 			_add_line("happy")
@@ -98,9 +115,18 @@ func refresh() -> void:
 	_put("target", "Moradores dispostos a viver aqui", Fmt.pop(p.target))
 	_put("growth", "Crescimento", ("+" if p.growth_per_sec >= 0 else "") + Fmt.num(p.growth_per_sec) + " /s")
 	_put("jobs", "Vagas de emprego", Fmt.pop(p.jobs))
-	_put("ratio", "Trabalhadores por vaga", Fmt.percent(minf(9.99, p.available_jobs_ratio()) * 100))
+	_put("unemp", "Desemprego", "%s (%s)" % [Fmt.pop(p.unemployed()), Fmt.percent(p.unemployment_rate() * 100)])
+	for b in _bars:
+		if b.has("need"):
+			for n in p.needs():
+				if n["name"] == b["need"]:
+					b["bar"].value = n["value"]
+					var col := UI.C_GREEN if n["value"] >= 0.8 else (UI.C_ORANGE if n["value"] >= 0.4 else UI.C_RED)
+					b["bar"].add_theme_stylebox_override("fill", UI.style(col, 9))
 	_put("happy", "Felicidade: " + HappinessSystem.label(), Fmt.percent(HappinessSystem.value))
 	for b in _bars:
+		if b.has("need"):
+			continue
 		for f in HappinessSystem.factors:
 			if f["name"] == b["name"]:
 				b["bar"].max_value = maxf(1.0, f["max"])

@@ -44,6 +44,11 @@ var _weather_timer := 150.0
 var _rain_left := 0.0
 var _rain_level := 0.0
 var _last_tint := Color(0, 0, 0, 0)
+var _tint_acc := 0.0
+var _lanes: Array = [[], []]
+var traffic: TrafficLights
+var _confetti_acc := 0.0
+var _lightning_acc := 4.0
 var _last_night := -1.0
 
 
@@ -60,6 +65,7 @@ func _ready() -> void:
 	BuildingSystem.building_removed.connect(_on_removed)
 	BuildingSystem.buildings_reset.connect(_rebuild_buildings)
 	ExpansionSystem.region_unlocked.connect(_on_region_unlocked)
+	BuildingSystem.building_completed.connect(_on_completed)
 	SettingsManager.changed.connect(_on_settings)
 	GameManager.city_reset.connect(_on_city_reset)
 	cam_x = 0.0
@@ -117,6 +123,8 @@ func _build_layers() -> void:
 			world.add_child(lamps)
 			lamps.setup(GameData.region_start_x(r), GameData.region_end_x(r) - 1.0, lights)
 
+	traffic = TrafficLights.new()
+	world.add_child(traffic)
 	cars_root_far = Node2D.new()
 	world.add_child(cars_root_far)
 	cars_root_near = Node2D.new()
@@ -161,9 +169,9 @@ func _spawn_life() -> void:
 		c.queue_free()
 	_peds.clear()
 	_cars.clear()
-	var hq := SettingsManager.high_quality
-	var ped_count := 16 if hq else 7
-	var cars_per_lane := 4 if hq else 2
+	_lanes = [[], []]
+	var ped_count := SettingsManager.pedestrian_count()
+	var cars_per_lane := SettingsManager.cars_per_lane()
 	var vw := view_size().x
 	for i in ped_count:
 		var p := Pedestrian.new()
@@ -178,6 +186,7 @@ func _spawn_life() -> void:
 			c.randomize_car(_rng, lane, -1.0 if lane == 0 else 1.0)
 			c.position = Vector2(cam_x + (i + _rng.randf()) * (vw + 600) / cars_per_lane - 300, _lane_y(lane))
 			_cars.append(c)
+			_lanes[lane].append(c)
 
 
 func _ped_y() -> float:
@@ -331,6 +340,10 @@ func _process(delta: float) -> void:
 
 
 func _update_tint() -> void:
+	_tint_acc += get_process_delta_time()
+	if _tint_acc < 0.1:
+		return
+	_tint_acc = 0.0
 	var tint := day_night.world_tint()
 	var dark := _rain_level * 0.18
 	tint = tint.darkened(dark)
@@ -357,6 +370,19 @@ func _update_weather(delta: float) -> void:
 				_rain_left = _rng.randf_range(35, 75)
 	else:
 		_rain_left = 0.0
+	var storm := EventSystem.active_id == "tempestade"
+	if storm:
+		_rain_left = maxf(_rain_left, 2.0)
+		_lightning_acc -= delta
+		if _lightning_acc <= 0.0:
+			_lightning_acc = _rng.randf_range(4.0, 9.0)
+			rain.flash = 1.0
+			AudioManager.play("thunder", _rng.randf_range(0.8, 1.1))
+	if EventSystem.active_id == "festival" and SettingsManager.quality > 0:
+		_confetti_acc -= delta
+		if _confetti_acc <= 0.0:
+			_confetti_acc = 0.25
+			effects.confetti(Vector2(cam_x + _rng.randf_range(0, view_size().x), camera.position.y + 90), 6)
 	var target := 1.0 if _rain_left > 0.0 else 0.0
 	_rain_level = move_toward(_rain_level, target, delta * 0.25)
 	rain.intensity = _rain_level
@@ -399,10 +425,18 @@ func _update_peds(delta: float) -> void:
 
 func _update_cars(delta: float) -> void:
 	var vw := view_size().x
+	traffic.advance(delta)
 	for lane in 2:
-		var lane_cars: Array = _cars.filter(func(c): return c.lane == lane)
+		var lane_cars: Array = _lanes[lane]
 		var d := -1.0 if lane == 0 else 1.0
-		lane_cars.sort_custom(func(a, b): return a.position.x * d > b.position.x * d)
+		# ordenação por inserção (poucos carros, sem alocação por quadro)
+		for i in range(1, lane_cars.size()):
+			var j := i
+			while j > 0 and lane_cars[j - 1].position.x * d < lane_cars[j].position.x * d:
+				var tmp = lane_cars[j - 1]
+				lane_cars[j - 1] = lane_cars[j]
+				lane_cars[j] = tmp
+				j -= 1
 		for i in lane_cars.size():
 			var c: Car = lane_cars[i]
 			var want := c.base_speed
@@ -413,7 +447,14 @@ func _update_cars(delta: float) -> void:
 					want = minf(want, ahead.speed * 0.9)
 				if gap < 10.0:
 					want = 0.0
-			c.speed = move_toward(c.speed, want, 200.0 * delta)
+			# semáforo: para antes da faixa de pedestres no vermelho/amarelo
+			if not traffic.is_green():
+				var front := c.position.x + d * c.length * 0.5
+				var stop_x := traffic.next_stop_x(front, d)
+				var dist := (stop_x - front) * d
+				if dist >= 0.0 and dist < 90.0:
+					want = 0.0 if dist < 70.0 else want * 0.4
+			c.speed = move_toward(c.speed, want, 220.0 * delta)
 			c.advance(delta)
 			var out_ahead := (c.position.x > cam_x + vw + 400.0) if d > 0 else (c.position.x < cam_x - 400.0)
 			var far_behind := (c.position.x < cam_x - 1600.0) if d > 0 else (c.position.x > cam_x + vw + 1600.0)
@@ -431,7 +472,7 @@ func _update_cars(delta: float) -> void:
 func _update_bubbles(delta: float) -> void:
 	_bubble_timer -= delta
 	if _bubble_timer <= 0.0:
-		_bubble_timer = _rng.randf_range(9.0, 17.0)
+		_bubble_timer = _rng.randf_range(9.0, 17.0) * (0.45 if EventSystem.active_id in ["festival", "feira_tech"] else 1.0)
 		if effects.bubbles.size() < 2:
 			var candidates := []
 			for n in building_nodes.values():
@@ -463,11 +504,22 @@ func _update_bubbles(delta: float) -> void:
 
 func _on_built(b: Dictionary) -> void:
 	var n := _add_building_node(b)
-	n.play_build_anim()
 	effects.dust(n.position, n.w)
 	lots.refresh()
 	if not is_x_visible(n.position.x, -100.0):
 		focus_x(n.position.x)
+
+
+func _on_completed(b: Dictionary) -> void:
+	var n: BuildingNode = building_nodes.get(int(b["uid"]))
+	if n == null:
+		return
+	n.set_constructing(false)
+	n.play_build_anim()
+	effects.dust(n.position, n.w)
+	effects.sparkle(n.position, n.w, n.h)
+	if is_x_visible(n.position.x, 0.0):
+		AudioManager.play("complete")
 
 
 func _on_upgraded(b: Dictionary, _levels: int) -> void:
@@ -491,6 +543,15 @@ func _on_removed(uid: int) -> void:
 func _on_region_unlocked(index: int) -> void:
 	lots.refresh()
 	focus_x(GameData.region_start_x(index) + 600.0)
+	var center := GameData.region_start_x(index) + 600.0
+	for i in 6:
+		effects.firework(Vector2(center + _rng.randf_range(-500, 500), _rng.randf_range(120, 300)), i * 0.35)
+	AudioManager.play("firework")
+
+
+## Animação de dinheiro: moedas saltando a partir de um ponto da tela.
+func coin_burst_screen(screen_pos: Vector2, count := 14) -> void:
+	effects.coin_burst(camera.position + screen_pos, count)
 
 
 func _on_city_reset() -> void:
@@ -505,7 +566,8 @@ func _on_settings() -> void:
 	day_night.enabled = SettingsManager.day_night
 	if not day_night.enabled:
 		day_night.t = 0.45
-	var hq := SettingsManager.high_quality
-	if (hq and _peds.size() < 10) or (not hq and _peds.size() > 10):
+	if _peds.size() != SettingsManager.pedestrian_count() or _lanes[0].size() != SettingsManager.cars_per_lane():
 		_spawn_life()
+	for n in building_nodes.values():
+		n.queue_redraw()
 	_last_night = -1.0

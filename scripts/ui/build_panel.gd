@@ -5,7 +5,7 @@ extends ModalPanel
 
 signal built(b: Dictionary)
 
-const TAB_CATS := ["res", "com", "biz", "pub", "fun"]
+const TAB_CATS := ["res", "com", "biz", "pub", "fun", "esp"]
 var _rows: Array = []
 var _info: Label
 
@@ -111,12 +111,16 @@ func refresh() -> void:
 			btn.text = "Requer: " + GameData.REGIONS[def["region"]]["name"]
 			btn.disabled = true
 			continue
+		if def.has("research") and not ResearchSystem.is_done(def["research"]):
+			btn.text = "Requer pesquisa: " + GameData.research_def(def["research"])["name"]
+			btn.disabled = true
+			continue
 		if def.get("unique", false) and count > 0:
-			btn.text = "Construído (única)"
+			btn.text = "Construído (único)"
 			btn.disabled = true
 			continue
 		var cost := BuildingSystem.build_cost(id)
-		btn.text = "Construir  " + Fmt.money(cost)
+		btn.text = "Construir  %s  (obra %s)" % [Fmt.money(cost), Fmt.short_duration(BuildingSystem.build_time(id))]
 		var ok := EconomySystem.can_afford(cost) and free > 0
 		btn.disabled = not ok
 		if free <= 0:

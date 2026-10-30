@@ -112,6 +112,8 @@ func _draw() -> void:
 	var l := length
 	var out := BuildingArt.OUT
 	var hl := l * 0.5
+	if SettingsManager.quality > 0:
+		draw_rect(Rect2(-hl + 4, -3, l - 4, 6), Color(0, 0, 0, 0.18))
 	match kind:
 		"bus":
 			_body([-hl, -10, -hl, -62, hl - 6, -62, hl, -54, hl, -10], color)
