@@ -1,0 +1,62 @@
+; Engine configuration file.
+; Idle City — Godot 4.3 (GL Compatibility, otimizado para Android)
+
+config_version=5
+
+[application]
+
+config/name="Idle City"
+config/description="Transforme uma pequena vila em uma megacidade."
+config/version="1.0.0"
+run/main_scene="res://scenes/Boot.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/max_fps=60
+boot_splash/bg_color=Color(0.2, 0.55, 0.85, 1)
+boot_splash/show_image=false
+config/icon="res://icon.png"
+
+[autoload]
+
+SettingsManager="*res://scripts/autoload/settings_manager.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
+EconomySystem="*res://scripts/systems/economy_system.gd"
+BuildingSystem="*res://scripts/systems/building_system.gd"
+PopulationSystem="*res://scripts/systems/population_system.gd"
+HappinessSystem="*res://scripts/systems/happiness_system.gd"
+ExpansionSystem="*res://scripts/systems/expansion_system.gd"
+MissionSystem="*res://scripts/systems/mission_system.gd"
+PrestigeSystem="*res://scripts/systems/prestige_system.gd"
+SaveSystem="*res://scripts/systems/save_system.gd"
+IdleSystem="*res://scripts/systems/idle_system.gd"
+GameManager="*res://scripts/autoload/game_manager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=4
+
+[gui]
+
+theme/custom_font="res://assets/fonts/Fredoka-SemiBold.woff"
+theme/default_font_antialiasing=1
+common/drop_mouse_on_gui_input_disabled=true
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=false
+pointing/emulate_mouse_from_touch=true
+
+[physics]
+
+common/physics_ticks_per_second=30
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+environment/defaults/default_clear_color=Color(0.53, 0.79, 0.96, 1)
+anti_aliasing/quality/msaa_2d=0
