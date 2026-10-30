@@ -40,7 +40,6 @@ window/handheld/orientation=4
 
 [gui]
 
-theme/custom_font="res://assets/fonts/Fredoka-SemiBold.woff"
 theme/default_font_antialiasing=1
 common/drop_mouse_on_gui_input_disabled=true
 

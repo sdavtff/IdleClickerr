@@ -1,17 +1,9 @@
 extends Node
 ## Efeitos sonoros e música ambiente.
 
-const SOUNDS := {
-	"click": preload("res://assets/audio/click.wav"),
-	"coin": preload("res://assets/audio/coin.wav"),
-	"build": preload("res://assets/audio/build.wav"),
-	"upgrade": preload("res://assets/audio/upgrade.wav"),
-	"unlock": preload("res://assets/audio/unlock.wav"),
-	"mission": preload("res://assets/audio/mission.wav"),
-	"error": preload("res://assets/audio/error.wav"),
-}
-const MUSIC := preload("res://assets/audio/music.wav")
+const SOUND_NAMES := ["click", "coin", "build", "upgrade", "unlock", "mission", "error"]
 
+var _sounds := {}
 var _players: Array[AudioStreamPlayer] = []
 var _next := 0
 var _music: AudioStreamPlayer
@@ -24,8 +16,11 @@ func _ready() -> void:
 		p.volume_db = -4.0
 		add_child(p)
 		_players.append(p)
+	# Carregados em tempo de execução (o editor não precisa deles antes da importação).
+	for n in SOUND_NAMES:
+		_sounds[n] = load("res://assets/audio/%s.wav" % n)
 	_music = AudioStreamPlayer.new()
-	var stream: AudioStreamWAV = MUSIC
+	var stream: AudioStreamWAV = load("res://assets/audio/music.wav")
 	if stream.loop_mode == AudioStreamWAV.LOOP_DISABLED:
 		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 		stream.loop_begin = 0
@@ -45,10 +40,10 @@ func _apply_settings() -> void:
 
 
 func play(name: String, pitch: float = 1.0) -> void:
-	if not SettingsManager.sfx or not SOUNDS.has(name):
+	if not SettingsManager.sfx or _sounds.get(name) == null:
 		return
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
-	p.stream = SOUNDS[name]
+	p.stream = _sounds[name]
 	p.pitch_scale = pitch
 	p.play()
